@@ -5,6 +5,9 @@ import { AudioManager } from './audio/AudioManager';
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
 type Staff = { id: string; name: string; role: string; initials: string; color: string; home: Point; focus: string };
+type BilingualMessage = { en: string; ja: string };
+type EventTone = 'arrival' | 'warning' | 'report' | 'walk';
+type DiaryEntry = { date: string; complete: number; reputation: number; day?: number };
 
 const languages = [
   { name: 'English (UK)', native: 'English', code: 'en' },
@@ -19,10 +22,10 @@ type Language = (typeof languages)[number]['code'];
 
 const translations: Record<Language, Record<string, string>> = {
   en: {
-    eyebrow: 'A household operations game', subtitle: 'Every room has a rhythm. Every guest has a preference. Keep the house in good order before the last light leaves the lake.', begin: 'Begin the day', options: 'Options', settings: 'Settings', language: 'Language', close: 'Close', save: 'Save settings', correspondence: 'House preferences', languageHint: 'Choose the language for your ledger, notices and diary.', titleLine: 'At first light, the house is yours.', season: 'Season', weather: 'Weather', clock: 'House clock', grounds: 'Pemberley grounds', view: 'Steward’s view', move: 'move', run: 'run', adjust: 'adjust view', interact: 'interact', desk: 'Steward’s desk', day: 'Day 01', order: 'Today’s order', ring: 'Ring household bell', closeDay: 'Close day & write diary', household: 'Household', onDuty: 'on duty', staffRoutes: 'Staff routes', reputation: 'House reputation', goodOrder: 'Good order · +2 since dawn', eventLog: 'Event log', taskDone: 'marked complete', bellNotice: 'The household bell has been rung · 15 minutes advanced', nothing: 'Nothing here requires your attention. Try the east wing or south grounds.', noticeTask: 'Task recorded', focus: 'Focus', sound: 'Ambient bell and room sounds', voice: 'Spoken notices', diary: 'The Pemberley diary · evening', diaryTitle: 'A well-managed day', return: 'Return to grounds', another: 'Begin another day', diaryText: 'The last light has gone from the west windows. Your account has been placed safely in the household diary.', morning: 'Inspect the morning rooms', kitchen: 'Confirm breakfast service', garden: 'Review the kitchen garden', arrival: 'Prepare for afternoon callers', housekeeping: 'Housekeeping', guests: 'Guests', groundsFocus: 'Grounds',
+    eyebrow: 'A household operations game', subtitle: 'Every room has a rhythm. Every guest has a preference. Keep the house in good order before the last light leaves the lake.', begin: 'Begin the day', options: 'Options', settings: 'Settings', language: 'Language', close: 'Close', save: 'Save settings', correspondence: 'House preferences', languageHint: 'Choose the language for your ledger, notices and diary.', titleLine: 'At first light, the house is yours.', season: 'Season', weather: 'Weather', clock: 'House clock', grounds: 'Pemberley grounds', view: 'Steward’s view', move: 'move', run: 'run', adjust: 'adjust view', interact: 'interact', desk: 'Steward’s desk', day: 'Day 01', order: 'Today’s order', ring: 'Ring household bell', closeDay: 'Close day & write diary', household: 'Household', onDuty: 'on duty', staffRoutes: 'Staff routes', reputation: 'House reputation', goodOrder: 'Good order · +2 since dawn', eventLog: 'Event log', taskDone: 'marked complete', bellNotice: 'The household bell has been rung · 15 minutes advanced', nothing: 'Nothing here requires your attention. Try the east wing or south grounds.', noticeTask: 'Task recorded', focus: 'Focus', sound: 'Ambient bell and room sounds', voice: 'Spoken notices', diary: 'The Pemberley diary · evening', diaryTitle: 'A well-managed day', return: 'Return to grounds', another: 'Begin another day', diaryText: 'The last light has gone from the west windows. Your account has been placed safely in the household diary.', lastDiary: 'Last diary entry', diaryDate: 'Date', diaryTasks: 'Duties completed', diaryReputation: 'Reputation', openDiary: 'Read the diary', morning: 'Inspect the morning rooms', kitchen: 'Confirm breakfast service', garden: 'Review the kitchen garden', arrival: 'Prepare for afternoon callers', housekeeping: 'Housekeeping', guests: 'Guests', groundsFocus: 'Grounds',
   },
   ja: {
-    eyebrow: '領地運営シミュレーション', subtitle: '部屋にはそれぞれのリズムがあり、客人にはそれぞれの好みがあります。湖から最後の光が消える前に、館を整えましょう。', begin: '一日を始める', options: 'オプション', settings: '設定', language: '言語', close: '閉じる', save: '設定を保存', correspondence: '館の設定', languageHint: '帳簿、通知、日記で使う言語を選択します。', titleLine: '夜明けとともに、この館はあなたのものです。', season: '季節', weather: '天候', clock: '館の時計', grounds: 'ペンバリー領地', view: '執事の視点', move: '移動', run: '走る', adjust: '視点変更', interact: '調べる', desk: '執事の机', day: '1日目', order: '本日の予定', ring: '館の鐘を鳴らす', closeDay: '一日を閉じて日記を書く', household: '使用人', onDuty: '名が勤務中', staffRoutes: '使用人の巡回', reputation: '館の評判', goodOrder: '良好 · 夜明けから+2', eventLog: '出来事の記録', taskDone: '完了に記録しました', bellNotice: '館の鐘を鳴らしました · 15分経過', nothing: 'ここに必要な仕事はありません。東棟か南の庭へ向かいましょう。', noticeTask: '仕事を記録しました', focus: '担当', sound: '鐘と部屋の環境音', voice: '音声通知', diary: 'ペンバリーの日記 · 夕刻', diaryTitle: 'よく管理された一日', return: '領地へ戻る', another: '新しい一日を始める', diaryText: '西の窓から最後の光が消えました。あなたの記録は館の日記に大切に保管されました。', morning: '朝の部屋を点検する', kitchen: '朝食の準備を確認する', garden: '菜園を見回る', arrival: '午後の来客に備える', housekeeping: '家事', guests: '来客', groundsFocus: '庭の管理',
+    eyebrow: '領地運営シミュレーション', subtitle: '部屋にはそれぞれのリズムがあり、客人にはそれぞれの好みがあります。湖から最後の光が消える前に、館を整えましょう。', begin: '一日を始める', options: 'オプション', settings: '設定', language: '言語', close: '閉じる', save: '設定を保存', correspondence: '館の設定', languageHint: '帳簿、通知、日記で使う言語を選択します。', titleLine: '夜明けとともに、この館はあなたのものです。', season: '季節', weather: '天候', clock: '館の時計', grounds: 'ペンバリー領地', view: '執事の視点', move: '移動', run: '走る', adjust: '視点変更', interact: '調べる', desk: '執事の机', day: '1日目', order: '本日の予定', ring: '館の鐘を鳴らす', closeDay: '一日を閉じて日記を書く', household: '使用人', onDuty: '名が勤務中', staffRoutes: '使用人の巡回', reputation: '館の評判', goodOrder: '良好 · 夜明けから+2', eventLog: '出来事の記録', taskDone: '完了に記録しました', bellNotice: '館の鐘を鳴らしました · 15分経過', nothing: 'ここに必要な仕事はありません。東棟か南の庭へ向かいましょう。', noticeTask: '仕事を記録しました', focus: '担当', sound: '鐘と部屋の環境音', voice: '音声通知', diary: 'ペンバリーの日記 · 夕刻', diaryTitle: 'よく管理された一日', return: '領地へ戻る', another: '新しい一日を始める', diaryText: '西の窓から最後の光が消えました。あなたの記録は館の日記に大切に保管されました。', lastDiary: '最後の日記', diaryDate: '日付', diaryTasks: '完了した仕事', diaryReputation: '評判', openDiary: '日記を読む', morning: '朝の部屋を点検する', kitchen: '朝食の準備を確認する', garden: '菜園を見回る', arrival: '午後の来客に備える', housekeeping: '家事', guests: '来客', groundsFocus: '庭の管理',
   },
   fr: {}, de: {}, es: {}, zh: {},
 };
@@ -31,6 +34,20 @@ function detectLanguage(): Language {
   const supported = languages.map(item => item.code);
   const preferred = [...(navigator.languages || []), navigator.language || 'en'];
   return preferred.map(value => value.toLowerCase().split('-')[0]).find(value => supported.includes(value as Language)) as Language || 'en';
+}
+
+function readDiaryEntries(): DiaryEntry[] {
+  try {
+    const saved = localStorage.getItem('pemberley-diary');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    const entries = Array.isArray(parsed) ? parsed : [parsed];
+    return entries.filter((entry): entry is DiaryEntry =>
+      entry && typeof entry.date === 'string' && typeof entry.complete === 'number' && typeof entry.reputation === 'number'
+    ).map(entry => ({ date: entry.date, complete: entry.complete, reputation: entry.reputation, ...(typeof entry.day === 'number' ? { day: entry.day } : {}) }));
+  } catch {
+    return [];
+  }
 }
 
 const staff: Staff[] = [
@@ -47,6 +64,60 @@ const initialLogs = [
   { time: '06:58', text: 'Kitchen fire lit. Breakfast service is under way.' },
 ];
 
+const seasons = [
+  { en: 'Spring · 1812', ja: '春 · 1812' },
+  { en: 'Midsummer · 1812', ja: '盛夏 · 1812' },
+  { en: 'Michaelmas · 1812', ja: 'ミカエル祭 · 1812' },
+  { en: 'Winter · 1812', ja: '冬 · 1812' },
+];
+const weatherBySeason = [
+  [{ en: 'Pearl-grey drizzle', ja: '真珠色の霧雨' }, { en: 'Bright showers', ja: '明るい通り雨' }, { en: 'Soft mist', ja: 'やわらかな霧' }, { en: 'Airing clouds', ja: '風に流れる雲' }],
+  [{ en: 'Warm rain', ja: '暖かな雨' }, { en: 'Clear and warm', ja: '晴れて暖かい日' }, { en: 'Hazy sun', ja: '霞んだ陽射し' }, { en: 'Thunder beyond the hills', ja: '丘の向こうの雷雨' }],
+  [{ en: 'Misty rain', ja: '霧雨' }, { en: 'Clear autumn light', ja: '澄んだ秋の光' }, { en: 'Low cloud', ja: '低い雲' }, { en: 'West wind', ja: '西風' }],
+  [{ en: 'Frost and pale sun', ja: '霜と淡い陽射し' }, { en: 'Fine snow', ja: '細かな雪' }, { en: 'Iron-grey sky', ja: '鉄色の空' }, { en: 'Dry north wind', ja: '乾いた北風' }],
+];
+
+// Four times of day × four seasonal moods × four weather moods = 64 distinct walks.
+const walkScenes: BilingualMessage[][] = [
+  [
+    { en: 'At first light, the lake keeps the rose of dawn between its reeds.', ja: '夜明け、湖は葦の間に薔薇色の光をたたえている。' },
+    { en: 'The morning path smells of wet earth and the promise of primroses.', ja: '朝の小道には濡れた土と桜草の気配が漂う。' },
+    { en: 'A lark rises above the east meadow as the household wakes.', ja: '館が目覚めるころ、東の牧草地からひばりが舞い上がる。' },
+    { en: 'The first carriage track is silvered, though the lawns remain firm beneath it.', ja: '最初の車道は銀色に濡れているが、芝はしっかりしている。' },
+  ],
+  [
+    { en: 'By midmorning, rain pearls on the yew and leaves the gravel shining.', ja: '午前半ば、雨粒がイチイを飾り、砂利道を輝かせている。' },
+    { en: 'A shaft of sun finds the fountain; even the sparrows seem unhurried.', ja: '陽射しが噴水を照らし、雀さえ急ぐ様子がない。' },
+    { en: 'The mist lifts from the lower lawn, revealing the lake one silver inch at a time.', ja: '霧が南の芝からほどけ、湖が銀色に少しずつ姿を現す。' },
+    { en: 'The west wind carries the scent of cut grass towards the orangery.', ja: '西風が刈った芝の香りを温室へ運んでいる。' },
+  ],
+  [
+    { en: 'At noon, the kitchen garden hums with bees beneath its damp leaves.', ja: '正午、菜園では濡れた葉の下を蜂が忙しく飛び交う。' },
+    { en: 'The long border holds the noon heat, and the stone bench is warm to the hand.', ja: '長い花壇が昼の熱を抱え、石のベンチは手に温かい。' },
+    { en: 'Cloud-shadow crosses the south lawn like a quiet procession.', ja: '雲の影が静かな行列のように南の芝を横切る。' },
+    { en: 'The lake path is brisk underfoot; a good day to check the boathouse latch.', ja: '湖畔の道は足元が軽やかだ。舟小屋の掛け金を確かめる日和である。' },
+  ],
+  [
+    { en: 'In the afternoon, the lilacs release their last fragrance along the terrace.', ja: '午後、テラス沿いでライラックが最後の香りを放っている。' },
+    { en: 'The warm air settles over the rose walk, making every bench inviting.', ja: '暖かな空気が薔薇園に降り、どのベンチも人を誘っている。' },
+    { en: 'The house windows catch the fading light while swallows turn over the lawn.', ja: '館の窓が夕暮れを受け、燕が芝の上で旋回している。' },
+    { en: 'The last light draws a copper line along the gravel before evening service.', ja: '夕刻の給仕前、最後の光が砂利道に銅色の線を引いている。' },
+  ],
+];
+const walkSeasonNotes: BilingualMessage[][] = [
+  [{ en: 'Primroses nod beside the path.', ja: '小道のそばで桜草がうなずいている。' }, { en: 'The herb beds are full of new green.', ja: '薬草壇は新しい緑で満ちている。' }, { en: 'A nest stirs in the hawthorn.', ja: 'サンザシの巣で雛が動いた。' }, { en: 'The stream runs clear after rain.', ja: '雨上がりの小川は澄んでいる。' }],
+  [{ en: 'Bees work the lavender border.', ja: '蜂がラベンダーの縁を働き回っている。' }, { en: 'The lime trees hold a deep green shade.', ja: '菩提樹が濃い緑の陰を落としている。' }, { en: 'Cicadas murmur beyond the wall.', ja: '壁の向こうで蝉がかすかに鳴いている。' }, { en: 'The orchard fruit is nearly ready.', ja: '果樹園の実りはもうすぐだ。' }],
+  [{ en: 'Leaves gather in the ha-ha.', ja: '空堀に落ち葉が集まっている。' }, { en: 'The first apples scent the orchard.', ja: '初摘みの林檎が果樹園を香らせる。' }, { en: 'Ferns bronze beneath the trees.', ja: '木々の下でシダが銅色に変わっている。' }, { en: 'The lake reflects a russet bank.', ja: '湖面が赤褐色の岸辺を映している。' }],
+  [{ en: 'Frost rims the fountain basin.', ja: '噴水の水盤を霜が縁取っている。' }, { en: 'Rooks call from the bare elms.', ja: '葉を落としたニレからミヤマガラスが鳴く。' }, { en: 'The pond wears a thin skin of ice.', ja: '池に薄い氷が張っている。' }, { en: 'Smoke lies low above the village.', ja: '村の上に煙が低くたなびいている。' }],
+];
+
+function chooseWalk(minutes: number, seasonIndex: number, weatherIndex: number): BilingualMessage {
+  const period = minutes < 10 * 60 ? 0 : minutes < 12 * 60 ? 1 : minutes < 14 * 60 ? 2 : 3;
+  const scene = walkScenes[period][(seasonIndex * 4 + weatherIndex) % 4];
+  const note = walkSeasonNotes[seasonIndex][(weatherIndex + period) % 4];
+  return { en: `${scene.en} ${note.en}`, ja: `${scene.ja} ${note.ja}` };
+}
+
 function formatTime(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -54,7 +125,7 @@ function formatTime(minutes: number) {
 }
 
 function speak(text: string, enabled: boolean, language: Language = 'en', rate = 0.9, pitch = 1) {
-  if (enabled && 'speechSynthesis' in window) {
+  if (enabled && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === 'ja' ? 'ja-JP' : language === 'fr' ? 'fr-FR' : language === 'de' ? 'de-DE' : language === 'es' ? 'es-ES' : language === 'zh' ? 'zh-CN' : 'en-GB';
@@ -64,7 +135,7 @@ function speak(text: string, enabled: boolean, language: Language = 'en', rate =
   }
 }
 
-function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; player: Point; onNotice?: (text: string) => void }) {
+function EstateCanvas({ mode, player, onNotice, onWalk }: { mode: 'title' | 'game'; player: Point; onNotice?: (text: string) => void; onWalk?: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(mode === 'title' ? 1.04 : 1);
   const hoverRef = useRef<Point>({ x: 0, y: 0 });
@@ -240,12 +311,13 @@ function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; play
     zoomRef.current = Math.max(.72, Math.min(1.42, zoomRef.current + (event.deltaY > 0 ? -.07 : .07)));
   };
 
-  const onClick = () => onNotice?.('The estate grounds are quiet. Choose a task or walk towards a marked colleague.');
+  const onClick = () => mode === 'game' ? onWalk?.() : onNotice?.('The estate grounds are quiet. Choose a task or walk towards a marked colleague.');
   return <canvas ref={canvasRef} className="estate-canvas" onWheel={onWheel} onClick={onClick} aria-label="Playable illustrated 3D view of Pemberley estate" />;
 }
 
-function TitleScreen({ language, setLanguage, onStart }: { language: Language; setLanguage: (value: Language) => void; onStart: () => void }) {
+function TitleScreen({ language, setLanguage, onStart, diaryEntries, onOpenDiary, taskCount }: { language: Language; setLanguage: (value: Language) => void; onStart: () => void; diaryEntries: DiaryEntry[]; onOpenDiary: () => void; taskCount: number }) {
   const t = (key: string) => translations[language][key] || translations.en[key] || key;
+  const diaryEntry = diaryEntries[diaryEntries.length - 1];
   return (
     <main className="title-screen fade-up">
       <section className="title-copy">
@@ -256,7 +328,13 @@ function TitleScreen({ language, setLanguage, onStart }: { language: Language; s
           <div className="title-jp">ペンバリーの一日</div>
           <div className="title-rule" />
           <p className="title-intro">{t('subtitle')}</p>
-          <button className="start-button" onClick={onStart}>{t('begin')} <ChevronRight size={17} /></button>
+           <button className="start-button" onClick={onStart}>{t('begin')} <ChevronRight size={17} /></button>
+           {diaryEntry && <div className="diary-summary">
+            <div className="eyebrow" style={{ color: '#a36b48' }}>{t('lastDiary')}</div>
+            <strong>{diaryEntry.date}</strong>
+            <div className="diary-summary-stats"><span>{t('diaryTasks')}: {diaryEntry.complete}/{taskCount}</span><span>{t('diaryReputation')}: {diaryEntry.reputation}</span></div>
+             <button className="diary-read-button" onClick={onOpenDiary}><BookOpen size={13} /> {t('openDiary')}{diaryEntries.length > 1 ? ` · ${diaryEntries.length}` : ''}</button>
+          </div>}
           <div className="title-options">
             <Settings size={14} />
             <select aria-label={t('language')} value={language} onChange={event => setLanguage(event.target.value as Language)}>
@@ -274,6 +352,14 @@ function TitleScreen({ language, setLanguage, onStart }: { language: Language; s
   );
 }
 
+function DiaryModal({ entry, language, taskCount, onReset, onClose, entries, onSelectEntry }: { entry: DiaryEntry; language: Language; taskCount: number; onReset: () => void; onClose: () => void; entries?: DiaryEntry[]; onSelectEntry?: (entry: DiaryEntry) => void }) {
+  const t = (key: string) => translations[language][key] || translations.en[key] || key;
+  const account = entry.complete === taskCount
+    ? (language === 'ja' ? '館は格別の優雅さをもって今日の務めを終えました。' : 'The house ran with uncommon grace today; every duty was seen to.')
+    : (language === 'ja' ? `館はその務めを保ちました。夕刻までに${entry.complete}件の主な仕事を確認しました。` : `The household held its course. ${entry.complete} of ${taskCount} principal duties were seen to before evening.`);
+  return <div className="modal-backdrop"><section className="modal fade-up"><div className="eyebrow" style={{ color: '#a36b48' }}>{t('diary')}</div><h2>{t('diaryTitle')}</h2><p>{t('diaryText')}</p>{entries && entries.length > 1 && <div className="diary-history" aria-label="Diary history">{entries.slice().reverse().map((savedEntry, index) => <button key={`${savedEntry.date}-${savedEntry.day ?? index}`} className={`diary-history-item ${savedEntry === entry ? 'active' : ''}`} onClick={() => onSelectEntry?.(savedEntry)}><span>{savedEntry.date}</span><small>{savedEntry.complete}/{taskCount} · {t('reputation')} {savedEntry.reputation}</small></button>)}</div>}<div className="diary-entry">“{account}”<br /><span style={{ color: '#9c795e', fontSize: 10 }}>— Steward's private account</span></div><div style={{ display: 'flex', gap: 18, font: '11px var(--app-font-mono)', color: '#64746b' }}><span><Sparkles size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{t('reputation')} {entry.reputation}</span><span><BookOpen size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{entry.complete}/{taskCount}</span></div><div className="modal-actions"><button onClick={onReset}><RotateCcw size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('another')}</button><button className="primary" onClick={onClose}>{t('return')}</button></div></section></div>;
+}
+
 function App() {
   const [phase, setPhase] = useState<Phase>('title');
   const [language, setLanguage] = useState<Language>(() => {
@@ -288,11 +374,14 @@ function App() {
   const joystickRef = useRef<Point>({ x: 0, y: 0 });
   const audioRef = useRef<AudioManager | null>(null);
   const [minutes, setMinutes] = useState(7 * 60 + 35);
+  const [dayNumber, setDayNumber] = useState(1);
   const [completed, setCompleted] = useState<string[]>([]);
   const [selectedStaff, setSelectedStaff] = useState(staff[0].id);
   const [focuses, setFocuses] = useState<Record<string, string>>(() => Object.fromEntries(staff.map(item => [item.id, item.focus])));
   const [logs, setLogs] = useState(initialLogs);
   const [reputation, setReputation] = useState(74);
+  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(readDiaryEntries);
+  const [selectedDiaryEntry, setSelectedDiaryEntry] = useState<DiaryEntry | null>(null);
   const [notice, setNotice] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [diaryOpen, setDiaryOpen] = useState(false);
@@ -303,6 +392,11 @@ function App() {
   const [pianoScore, setPianoScore] = useState(0);
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+  const seasonIndex = (dayNumber - 1) % seasons.length;
+  const weatherIndex = Math.floor(minutes / 90) % 4;
+  const season = seasons[seasonIndex];
+  const weather = weatherBySeason[seasonIndex][weatherIndex];
+  const firedEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     audioRef.current ??= new AudioManager();
@@ -346,6 +440,29 @@ function App() {
     setNotice(text);
     window.setTimeout(() => setNotice(current => current === text ? '' : current), 3000);
   }, []);
+  const announce = useCallback((message: BilingualMessage, tone: EventTone) => {
+    const text = language === 'ja' ? message.ja : message.en;
+    addLog(text);
+    notify(text);
+    speak(text, tts, language, voiceRate, tone === 'warning' ? 1.12 : 1);
+    audioRef.current?.eventTone(tone);
+  }, [addLog, language, notify, tts, voiceRate]);
+
+  useEffect(() => {
+    if (phase !== 'game') return;
+    const events: Array<{ id: string; at: number; shouldFire?: boolean; message: BilingualMessage; tone: EventTone }> = [
+      { id: 'morning-report', at: 9 * 60 + 30, message: { en: 'Mrs. Bennet reports: the morning rooms are ready, but the east corridor still wants attention.', ja: 'ベネット夫人の報告です。朝の部屋は整いましたが、東廊下にはまだ手入れが必要です。' }, tone: 'report' },
+      { id: 'catherine-arrival', at: 13 * 60, message: { en: 'Lady Catherine has arrived at the front hall. Her party expects the house to be in perfect order.', ja: 'キャサリン夫人が玄関ホールに到着しました。一行は館が完璧に整っていることを望んでいます。' }, tone: 'arrival' },
+      { id: 'catherine-warning', at: 13 * 60 + 30, shouldFire: reputation < 78 || completed.length < 2, message: { en: 'A pointed note from Lady Catherine: she has observed a delay in the household arrangements.', ja: 'キャサリン夫人から厳しい伝言です。館の手配に遅れがあるとのことです。' }, tone: 'warning' },
+      { id: 'evening-report', at: 15 * 60 + 30, message: { en: 'Mr. Reynolds reports: the lake path is secure and the staff are returning to their evening routes.', ja: 'レイノルズ氏の報告です。湖畔の道は安全で、使用人たちは夕刻の巡回へ戻っています。' }, tone: 'report' },
+    ];
+    events.forEach(event => {
+      if (minutes >= event.at && !firedEventsRef.current.has(event.id) && event.shouldFire !== false) {
+        firedEventsRef.current.add(event.id);
+        announce(event.message, event.tone);
+      }
+    });
+  }, [announce, completed.length, minutes, phase, reputation]);
 
   useEffect(() => {
     if (phase !== 'game') return;
@@ -400,6 +517,10 @@ function App() {
     addLog('The steward has entered the grounds. A full day lies ahead.');
      speak(language === 'ja' ? 'おはようございます。館はあなたの指示を待っています。' : 'Good morning. The house awaits your direction.', tts, language);
   };
+  const takeWalk = () => {
+    const walk = chooseWalk(minutes, seasonIndex, weatherIndex);
+    announce(walk, 'walk');
+  };
   const ringBell = () => {
     setMinutes(value => Math.min(value + 15, 17 * 60 + 30));
     setReputation(value => Math.min(100, value + 1));
@@ -420,15 +541,18 @@ function App() {
     speak(nearby.text, tts, language, voiceRate);
   };
   const finishDay = () => {
-    const entry = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), complete: completed.length, reputation };
-    localStorage.setItem('pemberley-diary', JSON.stringify(entry));
+    const entry = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), complete: completed.length, reputation, day: dayNumber };
+    const nextEntries = [...diaryEntries, entry];
+    localStorage.setItem('pemberley-diary', JSON.stringify(nextEntries));
+    setDiaryEntries(nextEntries);
+    setSelectedDiaryEntry(entry);
     setDiaryOpen(true);
   };
-  const resetDay = () => {
-    setMinutes(7 * 60 + 35); setCompleted([]); setReputation(74); setLogs(initialLogs); setPlayer({ x: 0, y: 7 }); playerRef.current = { x: 0, y: 7 }; setDiaryOpen(false); notify('A new morning has been prepared.');
-  };
+  function resetDay() {
+     setMinutes(7 * 60 + 35); setDayNumber(value => value + 1); setCompleted([]); setReputation(74); setLogs(initialLogs); setPlayer({ x: 0, y: 7 }); playerRef.current = { x: 0, y: 7 }; firedEventsRef.current.clear(); setDiaryOpen(false); notify('A new morning has been prepared.');
+  }
 
-  if (phase === 'title') return <div className="pemberley-app"><div className="grain" /><TitleScreen language={language} setLanguage={setLanguage} onStart={startGame} /></div>;
+  if (phase === 'title') return <div className="pemberley-app"><div className="grain" /><TitleScreen language={language} setLanguage={setLanguage} onStart={startGame} diaryEntries={diaryEntries} onOpenDiary={() => { setSelectedDiaryEntry(diaryEntries[diaryEntries.length - 1]); setDiaryOpen(true); }} taskCount={4} />{diaryEntries.length > 0 && diaryOpen && <DiaryModal entry={selectedDiaryEntry || diaryEntries[diaryEntries.length - 1]} entries={diaryEntries} onSelectEntry={setSelectedDiaryEntry} language={language} taskCount={4} onReset={resetDay} onClose={() => setDiaryOpen(false)} />}</div>;
 
   return (
     <div className="pemberley-app game-shell">
@@ -436,8 +560,8 @@ function App() {
       <header className="game-header">
         <div className="brand-mini"><div className="brand-mini-mark"><span>P</span></div><div><b>A Day at Pemberley</b><small>Household ledger · Derbyshire</small></div></div>
         <div className="header-stats">
-           <div className="stat"><label>{t('season')}</label><b>Michaelmas · 1812</b></div>
-           <div className="stat"><label>{t('weather')}</label><b><CloudRain size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{language === 'ja' ? '霧雨' : 'Misty rain'}</b></div>
+           <div className="stat"><label>{t('season')}</label><b>{language === 'ja' ? season.ja : season.en}</b></div>
+           <div className="stat"><label>{t('weather')}</label><b><CloudRain size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{language === 'ja' ? weather.ja : weather.en}</b></div>
            <div className="stat"><label>{t('clock')}</label><b><Clock3 size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{formatTime(minutes)}</b></div>
         </div>
         <div className="header-actions">
@@ -451,15 +575,15 @@ function App() {
            <div className="panel-title"><strong>{t('desk')}</strong><span>{t('day')}</span></div>
            <div className="day-card"><div className="eyebrow" style={{ color: '#adc2aa' }}>{language === 'ja' ? '木曜日 · 10月17日' : 'Thursday · 17 October'}</div><div className="day-number">{formatTime(minutes)}</div><p>{language === 'ja' ? '朝の仕事 · 湖に霧' : 'Morning duties · mist on the lake'}</p><div className="progress"><i style={{ width: `${Math.max(4, (minutes - 455) / 7.2)}%` }} /></div></div>
            <div className="section-label">{t('order')} · {completed.length}/{tasks.length}</div>
-          {tasks.map(task => <label className={`task ${completed.includes(task.id) ? 'done' : ''}`} key={task.id}><input type="checkbox" checked={completed.includes(task.id)} onChange={() => { setCompleted(current => current.includes(task.id) ? current.filter(id => id !== task.id) : [...current, task.id]); addLog(`${task.title} was ${completed.includes(task.id) ? 'returned to the ledger' : 'marked complete'}.`); }} /><span><b>{task.title}</b>{task.meta}</span></label>)}
+           {tasks.map(task => <label className={`task ${completed.includes(task.id) ? 'done' : ''}`} key={task.id}><input type="checkbox" aria-label={task.title} checked={completed.includes(task.id)} onChange={() => { setCompleted(current => current.includes(task.id) ? current.filter(id => id !== task.id) : [...current, task.id]); addLog(`${task.title} was ${completed.includes(task.id) ? 'returned to the ledger' : 'marked complete'}.`); }} /><span><b>{task.title}</b>{task.meta}</span></label>)}
            <button className="bell-button" onClick={ringBell}><Bell size={15} /> {t('ring')}</button>
            <button className="outline-button" style={{ width: '100%', marginTop: 9, color: '#c8d5c8', borderColor: '#526b62' }} onClick={finishDay}><BookOpen size={14} style={{ verticalAlign: 'middle', marginRight: 7 }} /> {t('closeDay')}</button>
         </aside>
         <main className="view-wrap" onClick={() => setLeftOpen(false)}>
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
-          <EstateCanvas mode="game" player={player} onNotice={notify} />
+           <EstateCanvas mode="game" player={player} onNotice={notify} onWalk={takeWalk} />
           {nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
-           <div className="touch-joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
+            <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
            <button className="touch-action" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); interact(); }} aria-label={t('interact')}>E</button>
            <button className="piano-launch" onClick={() => { setPianoOpen(true); audioRef.current?.start(); }} aria-label="Open piano">♫</button>
           <div className="minimap"><div className="minimap-inner"><div className="mini-lake" /><div className="mini-house" /><div className="mini-player" style={{ left: `${50 + player.x * 2.2}%`, top: `${42 + player.y * 2.2}%` }} />{staff.map((item, i) => <span key={item.id} style={{ position: 'absolute', width: 4, height: 4, borderRadius: '50%', background: item.color, left: `${47 + item.home.x * 2.2}%`, top: `${43 + item.home.y * 2.2}%` }} />)}</div></div>
@@ -477,7 +601,7 @@ function App() {
       </div>
       {notice && <div className="toast-note">{notice}</div>}
         {settingsOpen && <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}><section className="modal fade-up" onClick={event => event.stopPropagation()}><button className="icon-button" style={{ float: 'right', color: '#31554c' }} onClick={() => setSettingsOpen(false)} aria-label={t('close')}><X size={17} /></button><div className="eyebrow" style={{ color: '#a36b48' }}>{t('correspondence')}</div><h2>{t('settings')}</h2><p>{language === 'ja' ? '一日の音や表示を整えます。進行状況はこのブラウザに保存されます。' : 'Adjust the sensory details of your day. Your progress is kept in this browser.'}</p><div style={{ marginTop: 24, borderTop: '1px solid #cdbc9e' }}><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('language')} <select value={language} onChange={event => setLanguage(event.target.value as Language)}>{languages.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('sound')} <input type="checkbox" checked={sound} onChange={event => setSound(event.target.checked)} /></label><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('voice')} <input type="checkbox" checked={tts} onChange={event => setTts(event.target.checked)} /></label><label className="range-setting">{language === 'ja' ? '音声速度' : 'Voice speed'} <input type="range" min="0.5" max="2" step="0.1" value={voiceRate} onChange={event => setVoiceRate(Number(event.target.value))} /><output>{voiceRate.toFixed(1)}×</output></label></div><div className="modal-actions"><button onClick={() => setSettingsOpen(false)}>{t('save')}</button></div></section></div>}
-       {diaryOpen && <div className="modal-backdrop"><section className="modal fade-up"><div className="eyebrow" style={{ color: '#a36b48' }}>{t('diary')}</div><h2>{t('diaryTitle')}</h2><p>{t('diaryText')}</p><div className="diary-entry">“{completed.length === tasks.length ? (language === 'ja' ? '館は格別の優雅さをもって今日の務めを終えました。' : 'The house ran with uncommon grace today; every duty was seen to.') : (language === 'ja' ? `館はその務めを保ちました。夕刻までに${completed.length}件の主な仕事を確認しました。` : `The household held its course. ${completed.length} of ${tasks.length} principal duties were seen to before evening.`)}”<br /><span style={{ color: '#9c795e', fontSize: 10 }}>— Steward's private account</span></div><div style={{ display: 'flex', gap: 18, font: '11px var(--app-font-mono)', color: '#64746b' }}><span><Sparkles size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{t('reputation')} {reputation}</span><span><BookOpen size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{completed.length}/{tasks.length}</span></div><div className="modal-actions"><button onClick={resetDay}><RotateCcw size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('another')}</button><button className="primary" onClick={() => setDiaryOpen(false)}>{t('return')}</button></div></section></div>}
+        {diaryEntries.length > 0 && diaryOpen && <DiaryModal entry={selectedDiaryEntry || diaryEntries[diaryEntries.length - 1]} entries={diaryEntries} onSelectEntry={setSelectedDiaryEntry} language={language} taskCount={tasks.length} onReset={resetDay} onClose={() => { setDiaryOpen(false); setPhase('title'); }} />}
         {pianoOpen && <div className="modal-backdrop" onClick={() => setPianoOpen(false)}><section className="modal piano-modal fade-up" onClick={event => event.stopPropagation()}><div className="eyebrow" style={{ color: '#a36b48' }}>The parlour piano</div><h2>{language === 'ja' ? '夕べの小さな演奏' : 'A little evening air'}</h2><p>{language === 'ja' ? '4つの鍵盤で、ペンバリーの旋律を奏でましょう。' : 'Play a gentle Regency phrase on the four keys.'}</p><div className="piano-keys">{['C', 'D', 'E', 'G'].map((note, index) => <button key={note} onClick={() => { setPianoScore(score => score + 1); audioRef.current?.playPianoNote(index); }}><span>{note}</span></button>)}</div><div className="piano-score">{language === 'ja' ? `演奏した音符: ${pianoScore}` : `Notes played: ${pianoScore}`}</div><div className="modal-actions"><button className="primary" onClick={() => setPianoOpen(false)}>{t('close')}</button></div></section></div>}
     </div>
   );

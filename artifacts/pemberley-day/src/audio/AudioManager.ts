@@ -6,6 +6,7 @@ export type AudioScene = {
   gardenDistance: number;
   houseDistance: number;
 };
+export type EventTone = 'arrival' | 'warning' | 'report' | 'walk';
 
 export class AudioManager {
   private context: AudioContext | null = null;
@@ -23,12 +24,18 @@ export class AudioManager {
 
   start() {
     if (this.context) {
-      void this.context.resume();
+      void this.context.resume().catch(() => undefined);
       return;
     }
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) return;
-    this.context = new Context();
+    try {
+      this.context = new Context();
+    } catch {
+      // AudioContext can be unavailable or blocked by browser policy.
+      this.context = null;
+      return;
+    }
     this.master = this.context.createGain();
     this.master.gain.value = this.enabled ? 0.16 : 0;
     this.master.connect(this.context.destination);
@@ -76,6 +83,19 @@ export class AudioManager {
     window.setTimeout(() => this.tone(523, 0.46, 0.07), 120);
   }
 
+  eventTone(kind: EventTone) {
+    this.start();
+    if (!this.context || !this.master) return;
+    const tones: Record<EventTone, [number, number]> = {
+      arrival: [523.25, 0.12],
+      warning: [196, 0.2],
+      report: [392, 0.1],
+      walk: [659.25, 0.08],
+    };
+    const [frequency, duration] = tones[kind];
+    this.tone(frequency, duration, kind === 'warning' ? 0.07 : 0.04);
+  }
+
   playPianoNote(index: number) {
     this.start();
     const notes = [261.63, 293.66, 329.63, 392];
@@ -83,10 +103,15 @@ export class AudioManager {
   }
 
   dispose() {
-    this.wind?.stop();
-    this.river?.stop();
+    try { this.wind?.stop(); } catch { /* already stopped */ }
+    try { this.river?.stop(); } catch { /* already stopped */ }
     window.clearTimeout(this.pianoTimer);
-    void this.context?.close();
+    void this.context?.close().catch(() => undefined);
+    this.context = null;
+    this.master = null;
+    this.ambience = null;
+    this.wind = null;
+    this.river = null;
   }
 
   private tone(frequency: number, duration: number, volume: number) {
