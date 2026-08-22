@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "A Day at Pemberley"
+description = "A playable 3D estate-management game set in an Austen-inspired English country house, where the player manages household staff, rooms, reputation, visitors, weather, and the passing day."
+version = "1.0.0"
+id = "artifacts/pemberley-day"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19258
+
+[services.development]
+run = "pnpm --filter @workspace/pemberley-day run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pemberley-day", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/pemberley-day/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19258"
+BASE_PATH = "/"
