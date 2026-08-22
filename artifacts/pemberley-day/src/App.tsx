@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, BookOpen, ChevronRight, CloudRain, Clock3, Menu, RotateCcw, Settings, Sparkles, Users, Volume2, VolumeX, Wind, X } from 'lucide-react';
+import { AudioManager } from './audio/AudioManager';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
@@ -52,11 +53,13 @@ function formatTime(minutes: number) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-function speak(text: string, enabled: boolean, language: Language = 'en') {
+function speak(text: string, enabled: boolean, language: Language = 'en', rate = 0.9, pitch = 1) {
   if (enabled && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === 'ja' ? 'ja-JP' : language === 'fr' ? 'fr-FR' : language === 'de' ? 'de-DE' : language === 'es' ? 'es-ES' : language === 'zh' ? 'zh-CN' : 'en-GB';
+    utterance.rate = rate;
+    utterance.pitch = pitch;
     window.speechSynthesis.speak(utterance);
   }
 }
@@ -89,9 +92,9 @@ function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; play
       const t = now / 1000;
       context.clearRect(0, 0, w, h);
       const sky = context.createLinearGradient(0, 0, 0, h);
-      sky.addColorStop(0, mode === 'title' ? '#5e756d' : '#4b6860');
-      sky.addColorStop(.52, mode === 'title' ? '#a58b70' : '#78907b');
-      sky.addColorStop(1, '#314e49');
+       sky.addColorStop(0, '#a8b8c8');
+       sky.addColorStop(.52, mode === 'title' ? '#b8a878' : '#7a8f5e');
+       sky.addColorStop(1, '#6a5a4a');
       context.fillStyle = sky;
       context.fillRect(0, 0, w, h);
 
@@ -117,22 +120,22 @@ function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; play
       };
 
       // distant hills and the lake establish an estate horizon
-      poly([project(-22, -13, 0), project(2, -13, 0), project(8, -8, 0), project(-22, -5, 0)], '#3e6053');
-      poly([project(4, -16, 0), project(22, -14, 0), project(22, 1, 0), project(9, -2, 0)], '#3b5a51');
-      poly([project(12, 3, 0), project(22, 0, 0), project(22, 15, 0), project(10, 13, 0)], '#537883', '#759396');
+       poly([project(-22, -13, 0), project(2, -13, 0), project(8, -8, 0), project(-22, -5, 0)], '#9aa8b0');
+       poly([project(4, -16, 0), project(22, -14, 0), project(22, 1, 0), project(9, -2, 0)], '#9aa8b0');
+       poly([project(12, 3, 0), project(22, 0, 0), project(22, 15, 0), project(10, 13, 0)], '#a8b8c8', '#c8d0d8');
       poly([project(12, 5, 0), project(21, 2, 0), project(21, 4, 0), project(12, 7, 0)], 'rgba(198,190,147,.22)');
       // estate ground
-      poly([project(-20, -12), project(20, -12), project(20, 18), project(-20, 18)], '#54735b');
+       poly([project(-20, -12), project(20, -12), project(20, 18), project(-20, 18)], '#7a8f5e');
       for (let i = -18; i < 18; i += 2) line([project(i, -10), project(i + 14, 16)], 'rgba(224,202,153,.07)', 1);
       for (let i = -10; i < 17; i += 2) line([project(-18, i), project(18, i - 4)], 'rgba(31,65,53,.09)', 1);
       // paths
-      line([project(-1, 13), project(-1, 3), project(0, 0)], '#bfad82', 6);
-      line([project(-11, 5), project(-1, 3)], '#b9a67d', 3);
-      line([project(1, 1), project(9, 8)], '#b9a67d', 3);
+       line([project(-1, 13), project(-1, 3), project(0, 0)], '#a89070', 6);
+       line([project(-11, 5), project(-1, 3)], '#8b7355', 3);
+       line([project(1, 1), project(9, 8)], '#8b7355', 3);
       // kitchen garden beds
       for (let i = 0; i < 4; i++) {
         const x = 7 + i * 1.8;
-        poly([project(x, 8), project(x + 1.1, 7.5), project(x + 1.1, 11), project(x, 11.5)], '#416a4d', '#8aa26e');
+         poly([project(x, 8), project(x + 1.1, 7.5), project(x + 1.1, 11), project(x, 11.5)], '#4a5d3f', '#b8a878');
         for (let j = 0; j < 3; j++) line([project(x + .2, 8.2 + j), project(x + .85, 8.05 + j)], '#b2b878', 1);
       }
       // orchard
@@ -140,17 +143,17 @@ function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; play
         const x = -10 + (i % 4) * 2.2;
         const y = 8 + Math.floor(i / 4) * 2.1;
         const p = project(x, y, .4);
-        context.fillStyle = i % 2 ? '#355c4c' : '#426b50';
+         context.fillStyle = i % 2 ? '#4a5d3f' : '#7a8f5e';
         context.beginPath(); context.arc(p.x, p.y, scale * .6, 0, Math.PI * 2); context.fill();
         context.fillStyle = '#715b43'; context.fillRect(p.x - 1, p.y + scale * .25, 2, scale * .55);
       }
       // main house, layered for a convincing isometric elevation
       const base = project(-4.5, -3.2, 0);
-      poly([project(-5.5, -3.4), project(4.4, -3.4), project(4.4, 1.4), project(-5.5, 1.4)], '#d6c29c', '#8f795c');
-      poly([project(-5.5, 1.4), project(4.4, 1.4), project(4.4, 1.9), project(-5.5, 1.9)], '#856d59');
-      poly([project(-5.5, -3.4, 5.2), project(4.4, -3.4, 5.2), project(4.4, -3.4, 0), project(-5.5, -3.4, 0)], '#b9a682');
-      poly([project(-5.5, -3.4, 5.2), project(-.5, -6, 5.2), project(4.4, -3.4, 5.2)], '#5c5049', '#342f31');
-      poly([project(-.5, -6, 5.2), project(-.5, -6, 6.3), project(4.4, -3.4, 6.3), project(4.4, -3.4, 5.2)], '#403e3d');
+       poly([project(-5.5, -3.4), project(4.4, -3.4), project(4.4, 1.4), project(-5.5, 1.4)], '#c4b5a0', '#8b7d6b');
+       poly([project(-5.5, 1.4), project(4.4, 1.4), project(4.4, 1.9), project(-5.5, 1.9)], '#8b7d6b');
+       poly([project(-5.5, -3.4, 5.2), project(4.4, -3.4, 5.2), project(4.4, -3.4, 0), project(-5.5, -3.4, 0)], '#b8a878');
+       poly([project(-5.5, -3.4, 5.2), project(-.5, -6, 5.2), project(4.4, -3.4, 5.2)], '#5a5a5a', '#6a5a4a');
+       poly([project(-.5, -6, 5.2), project(-.5, -6, 6.3), project(4.4, -3.4, 6.3), project(4.4, -3.4, 5.2)], '#5a5a5a');
       // wings
       poly([project(-8.3, -2.3, 0), project(-5.5, -2.3, 0), project(-5.5, 1.2, 0), project(-8.3, 1.2, 0)], '#cbb78f', '#806b56');
       poly([project(4.4, -2.3, 0), project(7.1, -2.3, 0), project(7.1, 1.2, 0), project(4.4, 1.2, 0)], '#cbb78f', '#806b56');
@@ -172,6 +175,11 @@ function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; play
       context.fillStyle = '#819895'; context.beginPath(); context.ellipse(fountain.x, fountain.y, scale * 1.1, scale * .4, 0, 0, Math.PI * 2); context.fill();
       context.fillStyle = '#c3d0bd'; context.beginPath(); context.arc(fountain.x, fountain.y - scale * .35, scale * .13, 0, Math.PI * 2); context.fill();
       // trees framing the playable grounds
+       const oldTree = project(-12, 1, 0);
+       context.strokeStyle = '#6b4c2e'; context.lineWidth = Math.max(3, scale * .16);
+       line([oldTree, { x: oldTree.x - scale * .42, y: oldTree.y - scale * 1.6 }, { x: oldTree.x + scale * .1, y: oldTree.y - scale * 2.35 }], '#6b4c2e', Math.max(3, scale * .16));
+       context.fillStyle = '#4a5d3f';
+       for (let j = 0; j < 6; j++) { context.beginPath(); context.arc(oldTree.x + Math.sin(j * 2.1) * scale * .7, oldTree.y - scale * (1.55 + (j % 3) * .28), scale * (.55 + (j % 2) * .15), 0, Math.PI * 2); context.fill(); }
       for (let i = 0; i < 13; i++) {
         const angle = i * 2.4;
         const x = Math.cos(angle) * 14 + (i % 3) * 1.3;
@@ -202,6 +210,25 @@ function EstateCanvas({ mode, player, onNotice }: { mode: 'title' | 'game'; play
         const ry = (i * 53 + now / 22) % h;
         line([{ x: rx, y: ry }, { x: rx - 3, y: ry + 9 }], 'rgba(218,225,205,.13)', 1);
       }
+       // Watercolour paper pass: warm pigment wash, paper grain and Claude Glass vignette.
+       context.save();
+       context.globalCompositeOperation = 'soft-light';
+       context.fillStyle = 'rgba(255,248,231,.13)';
+       context.fillRect(0, 0, w, h);
+       context.globalCompositeOperation = 'multiply';
+       for (let i = 0; i < Math.min(900, Math.floor(w * h / 850)); i += 1) {
+         const px = (i * 47 + 13) % w;
+         const py = (i * 83 + 7) % h;
+         const alpha = ((i * 17) % 11) / 220;
+         context.fillStyle = `rgba(106,90,74,${alpha})`;
+         context.fillRect(px, py, 1 + (i % 2), 1);
+       }
+       const vignette = context.createRadialGradient(w / 2, h / 2, Math.min(w, h) * .28, w / 2, h / 2, Math.max(w, h) * .7);
+       vignette.addColorStop(0, 'rgba(106,90,74,0)');
+       vignette.addColorStop(1, 'rgba(106,90,74,.3)');
+       context.fillStyle = vignette;
+       context.fillRect(0, 0, w, h);
+       context.restore();
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
@@ -258,6 +285,8 @@ function App() {
   const [player, setPlayer] = useState<Point>({ x: 0, y: 7 });
   const playerRef = useRef<Point>({ x: 0, y: 7 });
   const keysRef = useRef<Record<string, boolean>>({});
+  const joystickRef = useRef<Point>({ x: 0, y: 0 });
+  const audioRef = useRef<AudioManager | null>(null);
   const [minutes, setMinutes] = useState(7 * 60 + 35);
   const [completed, setCompleted] = useState<string[]>([]);
   const [selectedStaff, setSelectedStaff] = useState(staff[0].id);
@@ -269,8 +298,28 @@ function App() {
   const [diaryOpen, setDiaryOpen] = useState(false);
   const [sound, setSound] = useState(true);
   const [tts, setTts] = useState(false);
+  const [voiceRate, setVoiceRate] = useState(0.9);
+  const [pianoOpen, setPianoOpen] = useState(false);
+  const [pianoScore, setPianoScore] = useState(0);
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+
+  useEffect(() => {
+    audioRef.current ??= new AudioManager();
+    audioRef.current.setEnabled(sound);
+    if (phase === 'game') audioRef.current.start();
+    return () => { audioRef.current?.dispose(); audioRef.current = null; };
+  }, [phase]);
+  useEffect(() => { audioRef.current?.setEnabled(sound); }, [sound]);
+  useEffect(() => {
+    if (phase !== 'game') return;
+    audioRef.current?.update({
+      minutes,
+      rainy: true,
+      gardenDistance: Math.hypot(player.x - 8, player.y - 9),
+      houseDistance: Math.hypot(player.x, player.y),
+    });
+  }, [minutes, phase, player]);
 
   const tasks = useMemo(() => [
     { id: 'morning', title: t('morning'), meta: language === 'ja' ? '東棟 · 08:00' : 'East wing · 08:00' },
@@ -327,6 +376,8 @@ function App() {
       if (keys.s || keys.arrowdown) next.y += speed * delta;
       if (keys.a || keys.arrowleft) next.x -= speed * delta;
       if (keys.d || keys.arrowright) next.x += speed * delta;
+       next.x += joystickRef.current.x * speed * delta;
+       next.y += joystickRef.current.y * speed * delta;
       next.x = Math.max(-14, Math.min(14, next.x)); next.y = Math.max(-9, Math.min(14, next.y));
       if (next.x !== playerRef.current.x || next.y !== playerRef.current.y) {
         playerRef.current = next;
@@ -354,12 +405,19 @@ function App() {
     setReputation(value => Math.min(100, value + 1));
     addLog('The west bell rings clearly across the grounds. Staff adjust their routes.');
     notify('The household bell has been rung · 15 minutes advanced');
-     speak(language === 'ja' ? '館の鐘を鳴らしました。' : 'The household bell has been rung.', tts, language);
-    if (sound) {
-      const audio = new AudioContext();
-      const osc = audio.createOscillator(); const gain = audio.createGain();
-      osc.frequency.value = 392; gain.gain.value = .08; osc.connect(gain); gain.connect(audio.destination); osc.start(); osc.stop(audio.currentTime + .35);
+    speak(language === 'ja' ? '館の鐘を鳴らしました。' : 'The household bell has been rung.', tts, language, voiceRate);
+    audioRef.current?.ringBell();
+  };
+  const interact = () => {
+    if (!nearby) {
+      notify(language === 'ja' ? 'ここには今、必要な仕事はありません。' : 'Nothing here requires your attention.');
+      return;
     }
+    setCompleted(current => current.includes(nearby.label) ? current : [...current, nearby.label]);
+    setReputation(value => Math.min(100, value + (completed.includes(nearby.label) ? 0 : 2)));
+    addLog(`${nearby.text} marked complete. The household is in good order.`);
+    notify(`Task recorded · ${nearby.text}`);
+    speak(nearby.text, tts, language, voiceRate);
   };
   const finishDay = () => {
     const entry = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), complete: completed.length, reputation };
@@ -401,6 +459,9 @@ function App() {
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
           <EstateCanvas mode="game" player={player} onNotice={notify} />
           {nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
+           <div className="touch-joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
+           <button className="touch-action" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); interact(); }} aria-label={t('interact')}>E</button>
+           <button className="piano-launch" onClick={() => { setPianoOpen(true); audioRef.current?.start(); }} aria-label="Open piano">♫</button>
           <div className="minimap"><div className="minimap-inner"><div className="mini-lake" /><div className="mini-house" /><div className="mini-player" style={{ left: `${50 + player.x * 2.2}%`, top: `${42 + player.y * 2.2}%` }} />{staff.map((item, i) => <span key={item.id} style={{ position: 'absolute', width: 4, height: 4, borderRadius: '50%', background: item.color, left: `${47 + item.home.x * 2.2}%`, top: `${43 + item.home.y * 2.2}%` }} />)}</div></div>
           <button className="icon-button" style={{ position: 'absolute', zIndex: 4, bottom: 18, left: 17, background: 'rgba(27,45,47,.8)' }} onClick={(event) => { event.stopPropagation(); setLeftOpen(value => !value); }} aria-label="Open task panel"><Menu size={17} /></button>
         </main>
@@ -415,8 +476,9 @@ function App() {
         </aside>
       </div>
       {notice && <div className="toast-note">{notice}</div>}
-       {settingsOpen && <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}><section className="modal fade-up" onClick={event => event.stopPropagation()}><button className="icon-button" style={{ float: 'right', color: '#31554c' }} onClick={() => setSettingsOpen(false)} aria-label={t('close')}><X size={17} /></button><div className="eyebrow" style={{ color: '#a36b48' }}>{t('correspondence')}</div><h2>{t('settings')}</h2><p>{language === 'ja' ? '一日の音や表示を整えます。進行状況はこのブラウザに保存されます。' : 'Adjust the sensory details of your day. Your progress is kept in this browser.'}</p><div style={{ marginTop: 24, borderTop: '1px solid #cdbc9e' }}><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('language')} <select value={language} onChange={event => setLanguage(event.target.value as Language)}>{languages.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('sound')} <input type="checkbox" checked={sound} onChange={event => setSound(event.target.checked)} /></label><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('voice')} <input type="checkbox" checked={tts} onChange={event => setTts(event.target.checked)} /></label></div><div className="modal-actions"><button onClick={() => setSettingsOpen(false)}>{t('save')}</button></div></section></div>}
+        {settingsOpen && <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}><section className="modal fade-up" onClick={event => event.stopPropagation()}><button className="icon-button" style={{ float: 'right', color: '#31554c' }} onClick={() => setSettingsOpen(false)} aria-label={t('close')}><X size={17} /></button><div className="eyebrow" style={{ color: '#a36b48' }}>{t('correspondence')}</div><h2>{t('settings')}</h2><p>{language === 'ja' ? '一日の音や表示を整えます。進行状況はこのブラウザに保存されます。' : 'Adjust the sensory details of your day. Your progress is kept in this browser.'}</p><div style={{ marginTop: 24, borderTop: '1px solid #cdbc9e' }}><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('language')} <select value={language} onChange={event => setLanguage(event.target.value as Language)}>{languages.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('sound')} <input type="checkbox" checked={sound} onChange={event => setSound(event.target.checked)} /></label><label style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #cdbc9e', fontSize: 12 }}>{t('voice')} <input type="checkbox" checked={tts} onChange={event => setTts(event.target.checked)} /></label><label className="range-setting">{language === 'ja' ? '音声速度' : 'Voice speed'} <input type="range" min="0.5" max="2" step="0.1" value={voiceRate} onChange={event => setVoiceRate(Number(event.target.value))} /><output>{voiceRate.toFixed(1)}×</output></label></div><div className="modal-actions"><button onClick={() => setSettingsOpen(false)}>{t('save')}</button></div></section></div>}
        {diaryOpen && <div className="modal-backdrop"><section className="modal fade-up"><div className="eyebrow" style={{ color: '#a36b48' }}>{t('diary')}</div><h2>{t('diaryTitle')}</h2><p>{t('diaryText')}</p><div className="diary-entry">“{completed.length === tasks.length ? (language === 'ja' ? '館は格別の優雅さをもって今日の務めを終えました。' : 'The house ran with uncommon grace today; every duty was seen to.') : (language === 'ja' ? `館はその務めを保ちました。夕刻までに${completed.length}件の主な仕事を確認しました。` : `The household held its course. ${completed.length} of ${tasks.length} principal duties were seen to before evening.`)}”<br /><span style={{ color: '#9c795e', fontSize: 10 }}>— Steward's private account</span></div><div style={{ display: 'flex', gap: 18, font: '11px var(--app-font-mono)', color: '#64746b' }}><span><Sparkles size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{t('reputation')} {reputation}</span><span><BookOpen size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{completed.length}/{tasks.length}</span></div><div className="modal-actions"><button onClick={resetDay}><RotateCcw size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('another')}</button><button className="primary" onClick={() => setDiaryOpen(false)}>{t('return')}</button></div></section></div>}
+        {pianoOpen && <div className="modal-backdrop" onClick={() => setPianoOpen(false)}><section className="modal piano-modal fade-up" onClick={event => event.stopPropagation()}><div className="eyebrow" style={{ color: '#a36b48' }}>The parlour piano</div><h2>{language === 'ja' ? '夕べの小さな演奏' : 'A little evening air'}</h2><p>{language === 'ja' ? '4つの鍵盤で、ペンバリーの旋律を奏でましょう。' : 'Play a gentle Regency phrase on the four keys.'}</p><div className="piano-keys">{['C', 'D', 'E', 'G'].map((note, index) => <button key={note} onClick={() => { setPianoScore(score => score + 1); audioRef.current?.playPianoNote(index); }}><span>{note}</span></button>)}</div><div className="piano-score">{language === 'ja' ? `演奏した音符: ${pianoScore}` : `Notes played: ${pianoScore}`}</div><div className="modal-actions"><button className="primary" onClick={() => setPianoOpen(false)}>{t('close')}</button></div></section></div>}
     </div>
   );
 }
