@@ -100,6 +100,74 @@ test('preserves and browses multiple diary entries', async ({ page, isMobile }) 
   await expect(page.locator('.modal')).toContainText('1/4');
 });
 
+test('keeps diary history browseable when switching between English and Japanese', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'The bilingual diary history flow uses the desktop title screen.');
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('pemberley-diary', JSON.stringify([
+    { date: '21 August 1812', complete: 1, reputation: 76, day: 1 },
+    { date: '22 August 1812', complete: 4, reputation: 82, day: 2 },
+  ])));
+  await page.reload();
+
+  const datedEntries = [
+    { date: '21 August 1812', complete: 1, reputation: 76 },
+    { date: '22 August 1812', complete: 4, reputation: 82 },
+  ];
+
+  for (const language of ['en', 'ja'] as const) {
+    const languageSelect = page.locator('main.title-screen select');
+    await languageSelect.selectOption(language);
+    await expect(languageSelect).toHaveAttribute('aria-label', language === 'en' ? 'Language' : '言語');
+    await expect(languageSelect).toHaveValue(language);
+
+    await page.getByRole('button', { name: language === 'en' ? /Read the diary/ : /日記を読む/ }).click({ force: true });
+    await expect(page.locator('.diary-history-item')).toHaveCount(2);
+
+    for (const entry of datedEntries) {
+      const historyEntry = page.getByRole('button', { name: new RegExp(entry.date) });
+      await expect(historyEntry).toBeVisible();
+      await expect(historyEntry).toContainText(`${entry.complete}/4`);
+      await expect(historyEntry).toContainText(String(entry.reputation));
+      await historyEntry.click({ force: true });
+      await expect(page.locator('.modal')).toContainText(`${entry.complete}/4`);
+      await expect(page.locator('.modal')).toContainText(String(entry.reputation));
+    }
+
+    await page.getByRole('button', { name: language === 'en' ? 'Return to grounds' : '領地へ戻る' }).click({ force: true });
+    await expect(page.getByRole('button', { name: language === 'en' ? /Read the diary/ : /日記を読む/ })).toBeVisible();
+  }
+});
+
+test('keeps saved diary browsing usable on mobile', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'This flow verifies the mobile diary layout.');
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('pemberley-diary', JSON.stringify([
+    { date: '21 August 1812', complete: 1, reputation: 76, day: 1 },
+    { date: '22 August 1812', complete: 4, reputation: 82, day: 2 },
+  ])));
+  await page.reload();
+
+  const readDiary = page.getByRole('button', { name: /Read the diary/ });
+  await expect(readDiary).toBeVisible();
+  await readDiary.click({ force: true });
+  await expect(page.locator('.diary-history-item')).toHaveCount(2);
+
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  for (const historyEntry of await page.locator('.diary-history-item').all()) {
+    const box = await historyEntry.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.getByRole('button', { name: /21 August 1812/ }).click({ force: true });
+  await expect(page.locator('.diary-entry')).toContainText('1 of 4 principal duties');
+  await page.getByRole('button', { name: 'Return to grounds' }).click({ force: true });
+  await expect(readDiary).toBeVisible();
+});
+
 test('keeps both diary records after closing two days', async ({ page, isMobile }) => {
   test.skip(isMobile, 'The two-day diary flow uses the desktop task panel.');
   await page.goto('/');
