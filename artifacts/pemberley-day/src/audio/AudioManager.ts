@@ -96,6 +96,20 @@ export class AudioManager {
     this.tone(frequency, duration, kind === 'warning' ? 0.07 : 0.04);
   }
 
+  staffArrived() {
+    this.start();
+    if (!this.context || !this.master) return;
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 2000;
+    gain.gain.setValueAtTime(0.05, this.context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.context.currentTime + 0.1);
+    oscillator.connect(gain).connect(this.master);
+    oscillator.start();
+    oscillator.stop(this.context.currentTime + 0.1);
+  }
+
   playPianoNote(index: number) {
     this.start();
     const notes = [261.63, 293.66, 329.63, 392];

@@ -1,0 +1,132 @@
+【緊急修正依頼：「見える化・聴こえる化・分かる化」3点のみ】
+リポジトリ: https://github.com/t-sakaki/a-day-at-pemberley
+前回のPost-Processingや5層音声システムは完全に削除し、以下の確実に動作する機能のみを実装してください。
+「小さなポリゴンが動き回っていて誰が誰だか分からない」「音が鳴らない」「遊び方が分からない」という3つの不満を解決します。
+
+【修正1: ズーム機能 — 最優先】
+現状のカメラは固定距離のままです。以下を追加してください。
+
+1. マウスホイールズーム:
+   - マウスホイール（deltaY）でカメラの距離を調整。
+   - 最小距離: 5（キャラクターにかなり近づける）、最大距離: 50（現在の俯瞰と同じ）。
+   - 滑らかに移動: 目標距離と現在距離を毎フレームlerp（係数0.1）。
+
+2. ピンチズーム（スマホ）:
+   - 2点タッチの距離変化を検出。
+   - 距離が縮まる→ズームイン、広がる→ズームアウト。
+   - マウスホイールと同じmin/max距離を適用。
+
+3. クリック/タップでフォーカス:
+   - キャラクター（召使い、来客、プレイヤー自身）をクリック/タップすると、カメラがそのキャラクターの正面（距離8、高さ3）にスムーズに移動。
+   - 移動中は1.5秒かけてlerp。移動完了後、少し上から見下ろす角度（polarAngle: Math.PI / 3）に固定。
+   - フォーカス中は「🔙 Back」ボタンを画面右上に表示し、タップで元の俯瞰視点に戻る。
+
+4. カメラ初期位置の調整:
+   - 現在よりも少し低め・近め（距離20、高さ12）に変更。小さなポリゴンが見える距離にする。
+
+【修正2: キャラクターの識別性向上 — ポリゴンのままで見分けられるように】
+外部モデルは使えない前提で、プリミティブでも「誰が誰か」分かるようにします。
+
+1. 頭上の名前バー（常時表示）:
+   - 各キャラクターの頭上1.5m上に、HTMLオーバーレイまたはThree.jsのSpriteで名前を表示。
+   - 名前バーの仕様:
+     * 背景: rgba(0,0,0,0.5)、文字: 白、フォント: 12px sans-serif
+     * 召使い: 「Butler」「Head Maid」「Gardener」「Cook」「Footman」
+     * 来客: 「Lady Catherine」「Mr. Collins」など
+     * プレイヤー: 「You (Steward)」
+   - HTMLオーバーレイの場合: 3D座標を毎フレーム画面座標に投影し、absoluteなdivを配置。
+   - Three.js Spriteの場合: CanvasTextureで名前を描画したテクスチャを使用。
+
+2. 色分けの強化:
+   - Butler（執事）: 黒 #1a1a1a（今より濃く）
+   - Head Maid: 白 #f0f0f0 + 白いエプロン（前面に白い板を追加）
+   - Gardener: 緑 #2d5a27（茶色がかった深緑）
+   - Cook: 白 #ffffff + 赤い頬（頭に小さな赤い球を2つ追加して頬っぽく）
+   - Footman: 紺 #1e3a5f
+   - Lady Catherine: 紫 #6b3fa0 + 帽子（頭上に大きめの円盤）
+   - プレイヤー: 青 #3a6b8f + 金色の名札（胸元に小さな金色板）
+
+3. サイズ調整:
+   - 召使いの身長を現在の1.2倍に。遠くからでもシルエットが分かるように。
+   - 来客（レディ・キャサリン）は1.3倍。地位の高さをサイズで表現。
+
+4. 状態アイコン:
+   - 頭上の名前バーの横に、小さなアイコンを追加:
+     * 移動中: 🚶
+     * 作業中: 🔨
+     * 疲労: 😰
+     * 話しかけ可能: 💬（プレイヤーが近くにいる時のみ）
+
+【修正3: チュートリアル吹き出し — 初回プレイ時のみ】
+新規コンポーネント `TutorialOverlay.tsx` を作成。
+
+1. 表示条件:
+   - localStorage.getItem('pemberley_tutorial_v2') が null の場合のみ表示。
+   - 「Skip Tutorial」リンクを右上に常時表示。
+
+2. 吹き出しデザイン:
+   - 画面下部、幅90%、max-width: 600px。
+   - 背景: #f5f0e6（アンティーク紙色）、枠線: 2px solid #8b7355。
+   - テキスト: 'Georgia' または serif、色: #3a3020、サイズ: 16px。
+   - 右下に「Next ▶」ボタン（茶色背景 #8b7355、白文字）。
+
+3. ステップ内容（7ステップ）:
+   Step 1: "Welcome to Pemberley. I am Mrs. Reynolds, the housekeeper. Let me show you around."
+   Step 2: "Walk using W, A, S, D keys, or the joystick on mobile [左下を黄色枠でハイライト]."
+   Step 3: "Scroll or pinch to zoom in and see the servants up close [中央をハイライト]."
+   Step 4: "Click on any servant to focus the camera on them [召使いをハイライト]. Their name appears above their head."
+   Step 5: "Press E or the action button to talk to nearby servants [右下ボタンをハイライト]."
+   Step 6: "Watch the Reputation stars at the top. Keep the guests happy!"
+   Step 7: "Ring the bell in the study for emergencies. Now, let the day begin!"
+
+4. ハイライト演出:
+   - 各Stepで対象のUI要素にCSSクラス `.tutorial-highlight` を付与。
+   - `.tutorial-highlight { box-shadow: 0 0 0 3px #ffd700; animation: pulse 1.5s infinite; }`
+   - 3DオブジェクトをハイライトするStepでは、対象のマテリアルのemissiveを #ffd700 に0.3秒間設定し、点滅させる。
+
+【修正4: 音の最小構成 — 確実に鳴る形】
+前回の複雑なAudioManagerは削除し、以下のみ。
+
+1. タイトル画面の変更:
+   - 「START GAME」ボタンの上に、小さな「🔊 Enable Sound」ボタンを追加。
+   - このボタンをクリックすると:
+     a) AudioContext を作成・resume()
+     b) テスト音（ビープ 440Hz, 0.2秒）を鳴らす
+     c) 成功したら「Sound On ✅」と表示
+   - その後、「START GAME」を押してゲーム開始。
+
+2. BGM（最小版）:
+   - ゲーム開始後、以下のプロシージャル音楽をループ:
+     * 音階: C4, E4, G4, A4（ペンタトニック）
+     * リズム: 4分音符 = 80BPM
+     * 音源: OscillatorNode(sine波)
+     * ゲイン: 0.06（非常に小さく）
+     * 和音: C4+E4（I）、G4+B4（V）、A4+C5（vi）、F4+A4（IV）を2小節ずつ
+   - 停止ボタンは設定画面（後述）に配置。
+
+3. 環境音（最小版）:
+   - 風の音: bufferSize=4096のScriptProcessorNodeまたはAudioBufferSourceNodeでホワイトノイズを生成。BiquadFilterNode(lowpass, 300Hz)。ゲイン0.03。
+   - 朝6-9時のみ、3-8秒間隔で鳥の声: OscillatorNode(square, 2000Hz, 0.05秒, gain 0.03)。
+
+4. TTS（最小版）:
+   - Web Speech API、en-GB。
+   - ゲーム開始時に1回だけ "Welcome to Pemberley." を発話。
+   - それ以外のイベント発話は一旦削除。動作確認後に追加。
+
+【修正5: 設定画面（簡易）】
+画面右上に⚙️アイコンを配置。タップでモーダル表示：
+- Sound: ON/OFF トグル
+- Music Volume: 0-100% スライダー
+- SFX Volume: 0-100% スライダー
+- Reset Tutorial: ボタン（localStorageをクリアして次回チュートリアル再表示）
+
+【重要: 前回コードの処理】
+- 前回追加されたEffectComposer、複雑なShaderPass、5層AudioManagerが残っている場合、完全に削除してください。
+- 上記の最小構成に置き換えることを最優先とします。
+- コンソールにエラーが出ないことを確認してください。
+
+【出力】
+- 修正後の完全なファイルを提示してください。
+- 重点ファイル: Game.tsx, World3D.tsx, CameraControls.tsx（または同等）, TutorialOverlay.tsx, AudioManager.tsx（最小版）, App.css。
+- 変更箇所には「// FIX: 理由」のコメントを入れてください。
+- 特に「ズーム機能」「名前バー」「チュートリアル」の3点が、ビルド後すぐに動作することを確認してください。

@@ -1,0 +1,223 @@
+【ゲームデザイン核変更：緊急イベント連鎖システムの実装】
+リポジトリ: https://github.com/t-sakaki/a-day-at-pemberley
+
+現在の「タスクリスト（チェックボックス）」方式を廃止し、以下の3つの変更のみを実装してください。
+新規ライブラリは不要です。既存のReact+Vite+TypeScript+Three.js構成に、コードを「追加・修正」する形で行ってください。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【変更1: 左パネルのタスクリスト → 緊急イベントパネル】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+左側のパネル（現在「執事の机」「本日の予定」が表示されている部分）を、以下の構成に変更してください。
+
+1. 「現在の緊急事態」エリア（パネル最上部、赤背景 #8b3a3a、白文字）：
+   - 発生中のイベントを最大3件まで縦に並べて表示。
+   - 各イベントに「残り時間バー」（水平ゲージ、赤→黄→緑、30秒で0になる）。
+   - テキスト例：「🔴 Cook spilled sauce! — 12s left」「🟡 Lady Catherine demands tea — 25s left」
+   - イベントがない時は「All is calm at Pemberley.」と表示。
+
+2. 「来客の機嫌」エリア：
+   - 現在邸宅にいる来客を1名ずつ表示。
+   - 各来客名の横に「怒りゲージ」（0-100%、水平バー）。
+   - 70%以上でバーが赤く点滅（CSS animation: pulse 1s infinite）。
+   - 来客名の下に小さく「好み: Strong tea, East room」など表示。
+
+3. 「召使いの状態」エリア（簡易版）：
+   - 5人の召使い名と、現在の行動を1行で表示。
+   - 例：「Gardener — Moving to Garden」「Maid — Cleaning Drawing Room」
+
+【実装上の注意】
+- 既存のタスクデータ構造（Task型など）があれば、それを削除または非表示にしてください。
+- パネルの高さはスクロール可能にし、内容が多い時はスクロールして確認できるように。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【変更2: 緊急イベント連鎖システム】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+新規ファイル `src/systems/EventSystem.ts` を作成してください。
+
+【クラス設計】
+class EventSystem {
+  activeEvents: EmergencyEvent[]; // 現在発生中のイベント（最大3件）
+  eventHistory: string[]; // 過去のイベントログ
+  guestManager: GuestManager; // 変更3で作成
+  
+  // ゲーム内時間で、ランダム間隔（30分〜2時間）でイベントを発生
+  tick(gameTime: GameTime): void;
+  
+  // プレイヤーが召使いを派遣して対応
+  resolveEvent(eventId: string, staffId: string): boolean;
+  
+  // 時間切れでイベントが悪化
+  escalateEvent(eventId: string): void;
+}
+
+【イベントデータ構造】
+interface EmergencyEvent {
+  id: string;
+  type: 'spill' | 'sick' | 'dog' | 'guest_arrival' | 'dinner_rush';
+  title: string; // 表示用短いタイトル
+  description: string; // 詳細説明
+  location: string; // 発生場所（'kitchen', 'drawing_room', 'entrance' など）
+  timeLimit: number; // 制限時間（秒、ゲーム内時間換算）
+  remainingTime: number;
+  severity: 'minor' | 'major' | 'critical';
+  consequence: string; // 悪化時の次のイベントIDまたは効果
+  resolved: boolean;
+}
+
+【イベント例（5種類）】
+1. spill（コックがソースをこぼした）
+   - 場所: kitchen
+   - 制限: 30秒
+   - 対応: 誰かをkitchenに送る、またはプレイヤーがkitchenでE連打
+   - 悪化: 「朝食が遅れる」→ 全来客の怒り+15、館の評判-10
+
+2. sick（庭師が風邪をひいた）
+   - 場所: servant_quarters
+   - 制限: なし（継続的）
+   - 効果: 庭師が作業不能。庭園イベント発生時に対応者-1。
+   - 対応: メイド長がservant_quartersに向かうと、20秒後に回復。
+
+3. dog（犬が居間を汚した）
+   - 場所: drawing_room
+   - 制限: 25秒
+   - 対応: メイドをdrawing_roomに送る
+   - 悪化: 「来客が居間に入れない」→ 来客の怒り+25
+
+4. guest_arrival（レディ・キャサリンが予告なしに到着）
+   - 場所: entrance
+   - 制限: 40秒
+   - 対応: 東の客室（east_room）の準備度を80%以上にする、またはメイドをeast_roomに送る
+   - 悪化: 「部屋が未準備」→ レディ・キャサリンの怒り+40、館の評判-20
+   - 演出: 玄関前に紫色のキャラクター（既存の来客モデルを流用）が出現。玄関へ向かって歩く。
+
+5. dinner_rush（急な晩餐会の依頼）
+   - 場所: kitchen
+   - 制限: ゲーム内時間で夕食時まで（例：17:00まで）
+   - 対応: 台所の食事準備度を80%以上にする
+   - 悪化: 準備度が不足→ 全来客の怒り+20、館の評判-15
+
+【連鎖メカニズム】
+- イベントAを「放置」（timeLimitが0になる）すると、自動的にconsequenceが発火。
+- consequenceは「新しいイベントBを生成」または「直接ゲージに影響」。
+- 例：spill（放置）→ 自動生成「delayed_breakfast」→ さらに放置すると「angry_guest」
+
+【プレイヤーの対応方法】
+1. 召使いをクリック/タップして選択 → パネルまたはコンテキストメニューで「Go to [場所]」を選択。
+2. 召使いが現場に到着すると、自動的にイベント解決が進行（5秒で解決）。
+3. プレイヤー自身が現場にいる状態でEキー（またはアクションボタン）を連打すると、解決が3秒で完了（手助け）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【変更3: 来客に性格とセリフを持たせる】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+新規ファイル `src/systems/GuestManager.ts` と `src/data/guests.ts` を作成。
+
+【guests.ts】
+export const GUEST_TEMPLATES = [
+  {
+    id: 'lady_catherine',
+    name: 'Lady Catherine de Bourgh',
+    personality: 'tyrannical',
+    preferences: { tea: 'strong', room: 'east', flower: 'roses' },
+    lines: {
+      arrival: "I hope I am not inconveniencing anyone by my unannounced visit.",
+      complaint: "This is entirely unsatisfactory. The east wing, if you please.",
+      angry: "I have never been so ill-treated! Pemberley has fallen into disrepair!",
+      praise: "Well... it is tolerable, I suppose.",
+      demand_tea: "Bring me tea. Strong, mind you. None of your insipid dishwater."
+    }
+  },
+  {
+    id: 'mr_collins',
+    name: 'Mr. Collins',
+    personality: 'obsequious',
+    preferences: { tea: 'weak', room: 'west', flower: 'lavender' },
+    lines: {
+      arrival: "What a fine estate! I am honoured beyond expression.",
+      complaint: "Oh, I am sure it is my fault entirely—though one might expect...",
+      angry: "I shall write to Lady Catherine about this reception!",
+      praise: "Exceedingly generous! I am most humbly grateful.",
+      demand_tea: "If it is not too much trouble, perhaps a little tea?"
+    }
+  },
+  {
+    id: 'bingley_sisters',
+    name: 'Miss Bingley',
+    personality: 'snobbish',
+    preferences: { tea: 'strong', room: 'east', flower: 'roses' },
+    lines: {
+      arrival: "How... quaint. One forgets how the country lives.",
+      complaint: "Is there nothing more diverting in this house?",
+      angry: "I shall tell everyone in London how we were treated!",
+      praise: "Surprisingly adequate, for the country.",
+      demand_tea: "Tea, if you have any fit to drink."
+    }
+  }
+];
+
+【GuestManagerクラス】
+class GuestManager {
+  currentGuests: Guest[]; // 現在邸宅にいる来客（最大2名同時）
+  
+  // 1日に1〜2名、ランダムな時間に到着
+  scheduleArrivals(day: number): void;
+  
+  // 来客の機嫌を更新
+  updateMood(guestId: string, delta: number): void;
+  
+  // セリフを取得して返す
+  getLine(guestId: string, type: 'arrival'|'complaint'|'angry'|'praise'|'demand_tea'): string;
+  
+  // 到着演出：玄関前にキャラクター出現、玄関へ向かって歩く
+  spawnGuest(guestId: string): void;
+}
+
+【セリフ表示UI】
+- 画面中央下部に、来客のセリフを大きく表示するエリアを追加（幅80%、高さ80px）。
+- 背景: rgba(245, 240, 230, 0.95)、枠線: 2px solid #8b7355。
+- フォント: Georgia, serif、サイズ: 18px、色: #3a3020。
+- 不満セリフは文字色を #8b3a3a（赤茶）に。
+- 満足セリフは文字色を #3a6b3f（緑）に。
+- セリフは1文字ずつ表示（タイピング風、30ms/文字）。
+
+【TTS（Web Speech API）】
+- セリフ表示と同時に、window.speechSynthesis で発話。
+- 言語: en-GB。
+- レディ・キャサリン: pitch 0.9, rate 0.85（低くゆっくり、威厳）
+- コリンズ氏: pitch 1.1, rate 1.1（高く早く、おべっか）
+- ビンリー姉妹: pitch 1.0, rate 1.0（標準）
+- ブラウザ非対応時は、console.log でフォールバック。ゲームは停止しない。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【変更4: 評判ゲージの分離】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+現在の単一「館の評判」ゲージを、以下に分離して右上に表示：
+
+1. 「館の評判」（Reputation）：星5つ表示（0-100%）。全体的な評価。
+2. 「来客の機嫌」（Guest Mood）：現在の来客名と怒りゲージ（0-100%）。
+3. 「召使いの士気」（Staff Morale）：0-100%。低いと召使いの移動速度と作業速度が半減。
+
+【士気システム】
+- イベントが連鎖して放置されると、士気が低下。
+- 士気が30%以下になると、召使いが「疲労」状態になり、作業速度が半減。
+- プレイヤーが直接手助けすると、士気が5%回復。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【技術制約・実装順序】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 既存のタスクシステムを非表示に（削除ではなくコメントアウトで可）。
+2. GuestManager + guests.ts を作成。
+3. EventSystem を作成。まず「spill」と「guest_arrival」の2イベントのみ実装。
+4. 左パネルを緊急イベントパネルに変更。
+5. セリフ表示UIを追加。TTSは最後に実装。
+6. 評判ゲージを分離。
+
+【重要】
+- 新規npmパッケージはインストールしない。
+- Three.jsの既存シーン（建物、キャラクター、カメラ）は変更しない。
+- キャラクターの「到着演出」は、既存のNPC移動AIを流用（目的地をentranceに設定するだけ）。
+- ビルドエラーを出

@@ -1,0 +1,2 @@
+- [Browser E2E environment](browser-e2e-environment.md) — Playwright Chromium needs explicit graphics and X11 runtime libraries in this workspace.
+- [Narrow-phone panel tests](narrow-phone-panel-tests.md) — wait for animated side panels to settle before strict viewport geometry assertions.
