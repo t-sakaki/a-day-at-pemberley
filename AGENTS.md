@@ -1,4 +1,4 @@
-# A Day at Pemberley
+# A Day at Pemberley — AGENTS.md
 
 Jane Austen 風の邸宅（Pemberley）を舞台にした、水彩ビジュアルのインタラクティブ体験アプリ。Canvas 2D で描画し、音声ガイド・スタッフ操作・日中の時間変化を含む。
 
