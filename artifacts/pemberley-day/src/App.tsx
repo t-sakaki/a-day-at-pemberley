@@ -2,9 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { Bell, BookOpen, ChevronRight, CloudRain, Clock3, Menu, RotateCcw, Settings, Sparkles, Users, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { AudioManager } from './audio/AudioManager';
+import { VoiceManager } from './audio/VoiceManager';
+import { voiceStatic, voiceTemplates } from './data/voice';
 import { EventSystem, type EmergencyEvent } from './systems/EventSystem';
 import { GuestManager, type GuestState } from './systems/GuestManager';
 import type { LocalizedText } from './data/guests';
+import { WatercolorPass } from './visuals/WatercolorPass';
+import { WatercolorMaterial } from './visuals/WatercolorMaterial';
+import { PaperTextureGenerator, type GeneratedPaperTexture } from './visuals/PaperTextureGenerator';
+import { AtmosphericFog } from './visuals/AtmosphericFog';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
@@ -230,6 +236,8 @@ function speak(text: string, enabled: boolean, language: Language = 'en', rate =
   }
 }
 
+
+
 const emergencyCopy: Record<Language, {
   emergencies: string; calm: string; timeLeft: string; resolve: string; dispatch: string;
   guestMood: string; staffMorale: string; preferences: string; assigned: string; unassigned: string;
@@ -297,6 +305,18 @@ function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emerg
   const hoverRef = useRef<Point>({ x: 0, y: 0 });
   const staffMotionRef = useRef<Record<string, Point>>({});
   const arrivedRef = useRef<Set<string>>(new Set());
+  const paperTextureRef = useRef<GeneratedPaperTexture | null>(null);
+  const fogRef = useRef<AtmosphericFog>(new AtmosphericFog());
+  const propsRef = useRef({ mode, player, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
+  propsRef.current = { mode, player, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
+
+  // 形状ごとの水彩素材：エッジの柔らかさ・ウォッシュ強さを一律で適用
+  const materialRef = useRef<WatercolorMaterial>(new WatercolorMaterial({
+    edgeSoftness: 0.6,
+    washStrength: 0.16,
+    addBleed: true,
+    tonalSteps: 0,
+  }));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -304,85 +324,90 @@ function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emerg
     const context = canvas.getContext('2d');
     if (!context) return;
     let frame = 0;
+    let resizeRaf = 0;
     const resize = () => {
-      const ratio = Math.min(window.devicePixelRatio || 1, 2);
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * ratio;
-      canvas.height = rect.height * ratio;
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        if (!canvas) return;
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const newWidth = Math.floor(rect.width * ratio);
+        const newHeight = Math.floor(rect.height * ratio);
+        if (canvas.width !== newWidth || canvas.height !== newHeight) {
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+        }
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      });
     };
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     resize();
+    // 紙テクスチャは1回だけ生成して使い回す（毎フレーム生成を避ける）
+    if (!paperTextureRef.current) {
+      paperTextureRef.current = PaperTextureGenerator.generate({ size: 512 });
+    }
 
     const draw = (now: number) => {
+      const currentProps = propsRef.current;
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
+      if (!w || !h) { frame = requestAnimationFrame(draw); return; }
       const t = now / 1000;
       context.clearRect(0, 0, w, h);
-      const sky = context.createLinearGradient(0, 0, 0, h);
-       sky.addColorStop(0, '#a8b8c8');
-       sky.addColorStop(.52, mode === 'title' ? '#b8a878' : '#7a8f5e');
-       sky.addColorStop(1, '#6a5a4a');
-      context.fillStyle = sky;
-      context.fillRect(0, 0, w, h);
-
-      const scale = Math.min(w, h) / 31 * zoomRef.current;
-      const cameraX = mode === 'game' ? player.x : Math.sin(t * .06) * .7;
-      const cameraY = mode === 'game' ? player.y : Math.cos(t * .05) * .45;
-      const project = (x: number, y: number, z = 0): Point => ({
-        x: w / 2 + (x - y - cameraX + cameraY) * scale * .74,
-        y: h * .49 + (x + y - cameraX - cameraY) * scale * .35 - z * scale,
+      const cx = w * (currentProps.mode === 'title' ? .52 : .5);
+      const cy = h * (currentProps.mode === 'title' ? .56 : .54);
+      const scale = Math.min(w / 44, h / 28) * zoomRef.current;
+      const project = (x: number, y: number, z = 0) => ({
+        x: cx + (x - y) * Math.cos(Math.PI / 6) * scale,
+        y: cy + (x + y) * Math.sin(Math.PI / 6) * scale * .58 - z * scale * .9,
       });
       const poly = (points: Point[], fill: string, stroke?: string) => {
         context.beginPath();
-        points.forEach((p, i) => i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y));
+        points.forEach((p, index) => index === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y));
         context.closePath();
         context.fillStyle = fill;
         context.fill();
-        if (stroke) { context.strokeStyle = stroke; context.lineWidth = 1; context.stroke(); }
+        if (stroke) {
+          context.strokeStyle = stroke;
+          context.lineWidth = 1;
+          context.stroke();
+          // 水彩の縁のにじみ（WatercolorMaterial経由）
+          materialRef.current.applyEdgeSoftening(context, points, fill);
+        }
       };
       const line = (points: Point[], stroke: string, width = 1) => {
         context.beginPath();
-        points.forEach((p, i) => i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y));
-        context.strokeStyle = stroke; context.lineWidth = width; context.stroke();
+        points.forEach((p, index) => index === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y));
+        context.strokeStyle = stroke;
+        context.lineWidth = width;
+        context.stroke();
       };
-
-      // distant hills and the lake establish an estate horizon
-       poly([project(-22, -13, 0), project(2, -13, 0), project(8, -8, 0), project(-22, -5, 0)], '#9aa8b0');
-       poly([project(4, -16, 0), project(22, -14, 0), project(22, 1, 0), project(9, -2, 0)], '#9aa8b0');
-       poly([project(12, 3, 0), project(22, 0, 0), project(22, 15, 0), project(10, 13, 0)], '#a8b8c8', '#c8d0d8');
-      poly([project(12, 5, 0), project(21, 2, 0), project(21, 4, 0), project(12, 7, 0)], 'rgba(198,190,147,.22)');
-      // estate ground
-       poly([project(-20, -12), project(20, -12), project(20, 18), project(-20, 18)], '#7a8f5e');
-      for (let i = -18; i < 18; i += 2) line([project(i, -10), project(i + 14, 16)], 'rgba(224,202,153,.07)', 1);
-      for (let i = -10; i < 17; i += 2) line([project(-18, i), project(18, i - 4)], 'rgba(31,65,53,.09)', 1);
-      // paths
-       line([project(-1, 13), project(-1, 3), project(0, 0)], '#a89070', 6);
-       line([project(-11, 5), project(-1, 3)], '#8b7355', 3);
-       line([project(1, 1), project(9, 8)], '#8b7355', 3);
-      // kitchen garden beds
-      for (let i = 0; i < 4; i++) {
-        const x = 7 + i * 1.8;
-         poly([project(x, 8), project(x + 1.1, 7.5), project(x + 1.1, 11), project(x, 11.5)], '#4a5d3f', '#b8a878');
-        for (let j = 0; j < 3; j++) line([project(x + .2, 8.2 + j), project(x + .85, 8.05 + j)], '#b2b878', 1);
-      }
-      // orchard
-      for (let i = 0; i < 8; i++) {
-        const x = -10 + (i % 4) * 2.2;
-        const y = 8 + Math.floor(i / 4) * 2.1;
-        const p = project(x, y, .4);
-         context.fillStyle = i % 2 ? '#4a5d3f' : '#7a8f5e';
-        context.beginPath(); context.arc(p.x, p.y, scale * .6, 0, Math.PI * 2); context.fill();
-        context.fillStyle = '#715b43'; context.fillRect(p.x - 1, p.y + scale * .25, 2, scale * .55);
-      }
-      // main house, layered for a convincing isometric elevation
-      const base = project(-4.5, -3.2, 0);
-       poly([project(-5.5, -3.4), project(4.4, -3.4), project(4.4, 1.4), project(-5.5, 1.4)], '#c4b5a0', '#8b7d6b');
-       poly([project(-5.5, 1.4), project(4.4, 1.4), project(4.4, 1.9), project(-5.5, 1.9)], '#8b7d6b');
-       poly([project(-5.5, -3.4, 5.2), project(4.4, -3.4, 5.2), project(4.4, -3.4, 0), project(-5.5, -3.4, 0)], '#b8a878');
-       poly([project(-5.5, -3.4, 5.2), project(-.5, -6, 5.2), project(4.4, -3.4, 5.2)], '#5a5a5a', '#6a5a4a');
-       poly([project(-.5, -6, 5.2), project(-.5, -6, 6.3), project(4.4, -3.4, 6.3), project(4.4, -3.4, 5.2)], '#5a5a5a');
+      // lawn and terraces
+      poly([project(-14, -8), project(14, -8), project(14, 14), project(-14, 14)], '#53684a');
+      poly([project(-12, -7), project(12, -7), project(12, 12), project(-12, 12)], '#617957');
+      poly([project(-9, -5), project(9, -5), project(9, 9), project(-9, 9)], '#6e8963');
+      // lake
+      context.fillStyle = '#4c6c70';
+      context.beginPath();
+      const l1 = project(-11, 7);
+      const l2 = project(-4, 13);
+      context.ellipse((l1.x + l2.x) / 2, (l1.y + l2.y) / 2, scale * 3.8, scale * 1.5, -.15, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#618488';
+      context.beginPath();
+      context.ellipse((l1.x + l2.x) / 2 + 6, (l1.y + l2.y) / 2 - 2, scale * 2.8, scale * 1.05, -.12, 0, Math.PI * 2);
+      context.fill();
+      // gravel paths
+      poly([project(-2, -5), project(2, -5), project(2, 11), project(-2, 11)], '#baa687');
+      poly([project(-8, 1), project(8, 1), project(8, 3.2), project(-8, 3.2)], '#b49f7e');
+      poly([project(-7, 8), project(7, 8), project(7, 9.6), project(-7, 9.6)], '#a89474');
+      // main hall
+      poly([project(-5.5, 1.4), project(4.4, 1.4), project(4.4, 1.9), project(-5.5, 1.9)], '#8b7d6b');
+      poly([project(-5.5, -3.4, 5.2), project(4.4, -3.4, 5.2), project(4.4, -3.4, 0), project(-5.5, -3.4, 0)], '#b8a878');
+      poly([project(-5.5, -3.4, 5.2), project(-.5, -6, 5.2), project(4.4, -3.4, 5.2)], '#5a5a5a', '#6a5a4a');
+      poly([project(-.5, -6, 5.2), project(-.5, -6, 6.3), project(4.4, -3.4, 6.3), project(4.4, -3.4, 5.2)], '#5a5a5a');
       // wings
       poly([project(-8.3, -2.3, 0), project(-5.5, -2.3, 0), project(-5.5, 1.2, 0), project(-8.3, 1.2, 0)], '#cbb78f', '#806b56');
       poly([project(4.4, -2.3, 0), project(7.1, -2.3, 0), project(7.1, 1.2, 0), project(4.4, 1.2, 0)], '#cbb78f', '#806b56');
@@ -404,11 +429,11 @@ function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emerg
       context.fillStyle = '#819895'; context.beginPath(); context.ellipse(fountain.x, fountain.y, scale * 1.1, scale * .4, 0, 0, Math.PI * 2); context.fill();
       context.fillStyle = '#c3d0bd'; context.beginPath(); context.arc(fountain.x, fountain.y - scale * .35, scale * .13, 0, Math.PI * 2); context.fill();
       // trees framing the playable grounds
-       const oldTree = project(-12, 1, 0);
-       context.strokeStyle = '#6b4c2e'; context.lineWidth = Math.max(3, scale * .16);
-       line([oldTree, { x: oldTree.x - scale * .42, y: oldTree.y - scale * 1.6 }, { x: oldTree.x + scale * .1, y: oldTree.y - scale * 2.35 }], '#6b4c2e', Math.max(3, scale * .16));
-       context.fillStyle = '#4a5d3f';
-       for (let j = 0; j < 6; j++) { context.beginPath(); context.arc(oldTree.x + Math.sin(j * 2.1) * scale * .7, oldTree.y - scale * (1.55 + (j % 3) * .28), scale * (.55 + (j % 2) * .15), 0, Math.PI * 2); context.fill(); }
+      const oldTree = project(-12, 1, 0);
+      context.strokeStyle = '#6b4c2e'; context.lineWidth = Math.max(3, scale * .16);
+      line([oldTree, { x: oldTree.x - scale * .42, y: oldTree.y - scale * 1.6 }, { x: oldTree.x + scale * .1, y: oldTree.y - scale * 2.35 }], '#6b4c2e', Math.max(3, scale * .16));
+      context.fillStyle = '#4a5d3f';
+      for (let j = 0; j < 6; j++) { context.beginPath(); context.arc(oldTree.x + Math.sin(j * 2.1) * scale * .7, oldTree.y - scale * (1.55 + (j % 3) * .28), scale * (.55 + (j % 2) * .15), 0, Math.PI * 2); context.fill(); }
       for (let i = 0; i < 13; i++) {
         const angle = i * 2.4;
         const x = Math.cos(angle) * 14 + (i % 3) * 1.3;
@@ -419,79 +444,79 @@ function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emerg
         context.fillStyle = '#674e3e'; context.fillRect(p.x - 1, p.y + scale * .45, 2, scale * .65);
       }
       // animated staff figures
-       staff.forEach((person, i) => {
-         const destination = staffDestinations?.[person.id];
-         const current = staffMotionRef.current[person.id] ?? { ...person.home };
-         const speed = emergencyActive ? 18 : 9;
-         if (destination) {
-           const distance = Math.hypot(destination.x - current.x, destination.y - current.y);
-           if (distance > 0.08) {
-             const step = Math.min(distance, speed / 60);
-             current.x += ((destination.x - current.x) / distance) * step;
-             current.y += ((destination.y - current.y) / distance) * step;
-             arrivedRef.current.delete(person.id);
-           } else if (!arrivedRef.current.has(person.id)) {
-             arrivedRef.current.add(person.id);
-             onStaffArrival?.(person.id);
-           }
-         } else {
-           const roaming = { x: person.home.x + Math.sin(t * (.23 + i * .03) + i) * (1.3 + i * .12), y: person.home.y + Math.cos(t * (.19 + i * .02) + i) * .8 };
-           current.x += (roaming.x - current.x) * .04;
-           current.y += (roaming.y - current.y) * .04;
-           arrivedRef.current.delete(person.id);
-         }
-         staffMotionRef.current[person.id] = current;
-         const moving = { x: current.x, y: current.y };
+      staff.forEach((person, i) => {
+        const destination = currentProps.staffDestinations?.[person.id];
+        const current = staffMotionRef.current[person.id] ?? { ...person.home };
+        const speed = currentProps.emergencyActive ? 18 : 9;
+        if (destination) {
+          const distance = Math.hypot(destination.x - current.x, destination.y - current.y);
+          if (distance > 0.08) {
+            const step = Math.min(distance, speed / 60);
+            current.x += ((destination.x - current.x) / distance) * step;
+            current.y += ((destination.y - current.y) / distance) * step;
+            arrivedRef.current.delete(person.id);
+          } else if (!arrivedRef.current.has(person.id)) {
+            arrivedRef.current.add(person.id);
+            currentProps.onStaffArrival?.(person.id);
+          }
+        } else {
+          const roaming = { x: person.home.x + Math.sin(t * (.23 + i * .03) + i) * (1.3 + i * .12), y: person.home.y + Math.cos(t * (.19 + i * .02) + i) * .8 };
+          current.x += (roaming.x - current.x) * .04;
+          current.y += (roaming.y - current.y) * .04;
+          arrivedRef.current.delete(person.id);
+        }
+        staffMotionRef.current[person.id] = current;
+        const moving = { x: current.x, y: current.y };
         const p = project(moving.x, moving.y, .7);
         context.fillStyle = 'rgba(18,34,32,.35)'; context.beginPath(); context.ellipse(p.x, p.y + scale * .25, scale * .35, scale * .14, 0, 0, Math.PI * 2); context.fill();
-         const bob = destination && emergencyActive ? Math.sin(t * Math.PI * 20) * scale * .1 : 0;
-         context.fillStyle = person.color; context.beginPath(); context.arc(p.x, p.y - scale * .16 + bob, scale * .24, 0, Math.PI * 2); context.fill();
-         context.fillStyle = '#eadcc0'; context.fillRect(p.x - scale * .16, p.y + scale * .05 + bob, scale * .32, scale * .4);
-        if (mode === 'game') { context.fillStyle = '#ecdfc3'; context.font = '9px Manrope'; context.textAlign = 'center'; context.fillText(person.initials, p.x, p.y - scale * .52); }
+        const bob = destination && currentProps.emergencyActive ? Math.sin(t * Math.PI * 20) * scale * .1 : 0;
+        context.fillStyle = person.color; context.beginPath(); context.arc(p.x, p.y - scale * .16 + bob, scale * .24, 0, Math.PI * 2); context.fill();
+        context.fillStyle = '#eadcc0'; context.fillRect(p.x - scale * .16, p.y + scale * .05 + bob, scale * .32, scale * .4);
+        if (currentProps.mode === 'game') { context.fillStyle = '#ecdfc3'; context.font = '9px Manrope'; context.textAlign = 'center'; context.fillText(person.initials, p.x, p.y - scale * .52); }
       });
-      if (mode === 'game') {
-        const pp = project(player.x, player.y, .8);
+      if (currentProps.mode === 'game') {
+        const pp = project(currentProps.player.x, currentProps.player.y, .8);
         context.fillStyle = 'rgba(226,189,137,.26)'; context.beginPath(); context.arc(pp.x, pp.y, scale * .72, 0, Math.PI * 2); context.fill();
         context.fillStyle = '#e2bd89'; context.beginPath(); context.arc(pp.x, pp.y - scale * .25, scale * .24, 0, Math.PI * 2); context.fill();
         context.fillStyle = '#31554c'; context.fillRect(pp.x - scale * .18, pp.y, scale * .36, scale * .55);
       }
       // atmospheric drizzle lines
-      if (mode === 'game') for (let i = 0; i < 30; i++) {
+      if (currentProps.mode === 'game') for (let i = 0; i < 30; i++) {
         const rx = (i * 97 + now / 35) % w;
         const ry = (i * 53 + now / 22) % h;
         line([{ x: rx, y: ry }, { x: rx - 3, y: ry + 9 }], 'rgba(218,225,205,.13)', 1);
       }
-       // Watercolour paper pass: warm pigment wash, paper grain and Claude Glass vignette.
-       context.save();
-       context.globalCompositeOperation = 'soft-light';
-       context.fillStyle = 'rgba(255,248,231,.13)';
-       context.fillRect(0, 0, w, h);
-       context.globalCompositeOperation = 'multiply';
-       for (let i = 0; i < Math.min(900, Math.floor(w * h / 850)); i += 1) {
-         const px = (i * 47 + 13) % w;
-         const py = (i * 83 + 7) % h;
-         const alpha = ((i * 17) % 11) / 220;
-         context.fillStyle = `rgba(106,90,74,${alpha})`;
-         context.fillRect(px, py, 1 + (i % 2), 1);
-       }
-       const vignette = context.createRadialGradient(w / 2, h / 2, Math.min(w, h) * .28, w / 2, h / 2, Math.max(w, h) * .7);
-       vignette.addColorStop(0, 'rgba(106,90,74,0)');
-       vignette.addColorStop(1, 'rgba(106,90,74,.3)');
-       context.fillStyle = vignette;
-       context.fillRect(0, 0, w, h);
-       context.restore();
+      // Watercolour composite pass（WatercolorPass 経由で一元管理）
+      // ウォッシュ / 紙ざわり / 霞み / ヴィネットをまとめて適用
+      const gameHour = (now / 1000 / 60) % 24; // アニメーション時刻から1日周期で算出
+      fogRef.current.update(gameHour, 1 / 60);
+      WatercolorPass.apply(
+        context,
+        w,
+        h,
+        {
+          mode: 'day',
+          washStrength: 0.18,
+          grainStrength: 1.0,
+          tonalSteps: 0,
+          vignetteStrength: 0.4,
+          atmosphericStrength: 0.25,
+          airAbsorptionColor: fogRef.current.getAirAbsorptionColor(),
+        },
+        paperTextureRef.current ?? undefined,
+      );
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
-   }, [mode, player, staffDestinations, emergencyActive, onStaffArrival]);
+    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(resizeRaf); observer.disconnect(); };
+  }, []);
 
   const onWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     zoomRef.current = Math.max(.72, Math.min(1.42, zoomRef.current + (event.deltaY > 0 ? -.07 : .07)));
   };
 
-  const onClick = () => mode === 'game' ? onWalk?.() : onNotice?.('The estate grounds are quiet. Choose a task or walk towards a marked colleague.');
+  const onClick = () => propsRef.current.mode === 'game' ? propsRef.current.onWalk?.() : propsRef.current.onNotice?.('The estate grounds are quiet. Choose a task or walk towards a marked colleague.');
   return <canvas ref={canvasRef} className="estate-canvas" onWheel={onWheel} onClick={onClick} aria-label="Playable illustrated 3D view of Pemberley estate" />;
 }
 
@@ -558,6 +583,7 @@ function App() {
   const keysRef = useRef<Record<string, boolean>>({});
   const joystickRef = useRef<Point>({ x: 0, y: 0 });
   const audioRef = useRef<AudioManager | null>(null);
+  const voiceRef = useRef<VoiceManager | null>(null);
   const [minutes, setMinutes] = useState(7 * 60 + 35);
   const [dayNumber, setDayNumber] = useState(1);
   const [completed, setCompleted] = useState<string[]>([]);
@@ -608,6 +634,12 @@ function App() {
     return () => { audioRef.current?.dispose(); audioRef.current = null; };
   }, [phase]);
   useEffect(() => { audioRef.current?.setEnabled(sound); }, [sound]);
+  useEffect(() => {
+    voiceRef.current ??= new VoiceManager();
+    voiceRef.current.setEnabled(tts);
+    return () => { voiceRef.current?.setEnabled(false); window.speechSynthesis?.cancel(); };
+  }, []);
+  useEffect(() => { voiceRef.current?.setEnabled(tts); }, [tts]);
   useEffect(() => {
     if (phase !== 'game') return;
     audioRef.current?.update({

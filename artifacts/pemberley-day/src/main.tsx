@@ -1,3 +1,14 @@
+// Suppress benign browser ResizeObserver and empty runtime error events
+window.addEventListener('error', (e) => {
+  if (
+    !e.message ||
+    e.message.includes('ResizeObserver') ||
+    e.message === 'Script error.'
+  ) {
+    e.stopImmediatePropagation();
+  }
+});
+
 import { createRoot } from 'react-dom/client';
 
 import App from './App';
