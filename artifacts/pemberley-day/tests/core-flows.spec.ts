@@ -1011,6 +1011,7 @@ test('escalated emergencies remain actionable and reset on a new English and Jap
   for (const language of ['en', 'ja'] as const) {
     await page.addInitScript((selectedLanguage) => localStorage.setItem('pemberley-language', selectedLanguage), language);
     await page.goto('/');
+    await pauseTestClock(page);
     await spawnMorningSpill(page);
     await ringBell(page, 3); // 09:35, past the spill's 32-minute response window.
     await openTaskPanel(page);

@@ -12,6 +12,7 @@ import { WatercolorMaterial } from './visuals/WatercolorMaterial';
 import { PaperTextureGenerator, type GeneratedPaperTexture } from './visuals/PaperTextureGenerator';
 import { AtmosphericFog } from './visuals/AtmosphericFog';
 import { composeDiary, type DiaryProse } from './narrative/diary';
+import { TourSystem, tourRooms, type TourRoomId } from './systems/TourSystem';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
@@ -108,22 +109,22 @@ function Dialog({ open, triggerRef, onClose, className = '', label, children }: 
 
 const translations: Record<Language, Record<string, string>> = {
   en: {
-    eyebrow: 'A household operations game', subtitle: 'Every room has a rhythm. Every guest has a preference. Keep the house in good order before the last light leaves the lake.', begin: 'Begin the day', options: 'Options', settings: 'Settings', language: 'Language', close: 'Close', save: 'Save settings', correspondence: 'House preferences', languageHint: 'Choose the language for your ledger, notices and diary.', titleLine: 'At first light, the house is yours.', season: 'Season', weather: 'Weather', clock: 'House clock', grounds: 'Pemberley grounds', view: 'Steward’s view', move: 'move', run: 'run', adjust: 'adjust view', interact: 'interact', desk: 'Steward’s desk', day: 'Day 01', order: 'Today’s order', ring: 'Ring household bell', closeDay: 'Close day & write diary', household: 'Household', onDuty: 'on duty', staffRoutes: 'Staff routes', reputation: 'Elizabeth’s good opinion', goodOrder: 'Rising · the visitors are well pleased', eventLog: 'Event log', taskDone: 'marked complete', bellNotice: 'The household bell has been rung · 15 minutes advanced', nothing: 'Nothing here requires your attention. Try the east wing or south grounds.', noticeTask: 'Task recorded', focus: 'Focus', sound: 'Ambient bell and room sounds', voice: 'Spoken notices', diary: 'The Pemberley diary · evening', diaryTitle: 'A well-managed day', return: 'Return to grounds', another: 'Begin another day', diaryText: 'The last light has gone from the west windows. Your account has been placed safely in the household diary.', lastDiary: 'Last diary entry', diaryDate: 'Date', diaryTasks: 'Duties completed', diaryReputation: 'Reputation', openDiary: 'Read the diary', morning: 'Inspect the morning rooms', kitchen: 'Confirm breakfast service', garden: 'Review the kitchen garden', arrival: 'Prepare for afternoon callers', housekeeping: 'Housekeeping', guests: 'Guests', groundsFocus: 'Grounds', diaryComplete: 'The house ran with uncommon grace today; every duty was seen to.', diaryPartial: 'The household held its course. {complete} of {tasks} principal duties were seen to before evening.', privateAccount: 'Steward’s private account', diaryHistory: 'Diary history',
+    eyebrow: 'A household operations game', subtitle: 'Every room has a rhythm. Every guest has a preference. Keep the house in good order before the last light leaves the lake.', begin: 'Begin the day', options: 'Options', settings: 'Settings', language: 'Language', close: 'Close', save: 'Save settings', correspondence: 'House preferences', languageHint: 'Choose the language for your ledger, notices and diary.', titleLine: 'At first light, the house is yours.', season: 'Season', weather: 'Weather', clock: 'House clock', grounds: 'Pemberley grounds', view: 'Steward’s view', move: 'move', run: 'run', adjust: 'adjust view', interact: 'interact', desk: 'Steward’s desk', day: 'Day 01', order: 'Today’s order', ring: 'Ring household bell', closeDay: 'Close day & write diary', household: 'Household', onDuty: 'on duty', staffRoutes: 'Staff routes', reputation: 'Elizabeth’s good opinion', goodOrder: 'Rising · the visitors are well pleased', eventLog: 'Event log', taskDone: 'marked complete', bellNotice: 'The household bell has been rung · 15 minutes advanced', nothing: 'Nothing here requires your attention. Try the east wing or south grounds.', noticeTask: 'Task recorded', focus: 'Focus', sound: 'Ambient bell and room sounds', voice: 'Spoken notices', diary: 'The Pemberley diary · evening', diaryTitle: 'A well-managed day', return: 'Return to grounds', another: 'Begin another day', diaryText: 'The last light has gone from the west windows. Your account has been placed safely in the household diary.', lastDiary: 'Last diary entry', diaryDate: 'Date', diaryTasks: 'Duties completed', diaryReputation: 'Reputation', openDiary: 'Read the diary', morning: 'Inspect the morning rooms', kitchen: 'Confirm breakfast service', garden: 'Review the kitchen garden', arrival: 'Prepare for afternoon callers', housekeeping: 'Housekeeping', guests: 'Guests', groundsFocus: 'Grounds', diaryComplete: 'The house ran with uncommon grace today; every duty was seen to.', diaryPartial: 'The household held its course. {complete} of {tasks} principal duties were seen to before evening.', privateAccount: 'Steward’s private account', diaryHistory: 'Diary history', tour: 'The visitors’ tour', tourWaiting: 'The house waits. The party is expected at one o’clock.', tourShowing: 'Being shown', tend: 'Set the room in order',
   },
   ja: {
-    eyebrow: '領地運営シミュレーション', subtitle: '部屋にはそれぞれのリズムがあり、客人にはそれぞれの好みがあります。湖から最後の光が消える前に、館を整えましょう。', begin: '一日を始める', options: 'オプション', settings: '設定', language: '言語', close: '閉じる', save: '設定を保存', correspondence: '館の設定', languageHint: '帳簿、通知、日記で使う言語を選択します。', titleLine: '夜明けとともに、この館はあなたのものです。', season: '季節', weather: '天候', clock: '館の時計', grounds: 'ペンバリー領地', view: '執事の視点', move: '移動', run: '走る', adjust: '視点変更', interact: '調べる', desk: '執事の机', day: '1日目', order: '本日の予定', ring: '館の鐘を鳴らす', closeDay: '一日を閉じて日記を書く', household: '使用人', onDuty: '名が勤務中', staffRoutes: '使用人の巡回', reputation: 'エリザベスの好意', goodOrder: '上向き · 来訪者は好意的', eventLog: '出来事の記録', taskDone: '完了に記録しました', bellNotice: '館の鐘を鳴らしました · 15分経過', nothing: 'ここに必要な仕事はありません。東棟か南の庭へ向かいましょう。', noticeTask: '仕事を記録しました', focus: '担当', sound: '鐘と部屋の環境音', voice: '音声通知', diary: 'ペンバリーの日記 · 夕刻', diaryTitle: 'よく管理された一日', return: '領地へ戻る', another: '新しい一日を始める', diaryText: '西の窓から最後の光が消えました。あなたの記録は館の日記に大切に保管されました。', lastDiary: '最後の日記', diaryDate: '日付', diaryTasks: '完了した仕事', diaryReputation: '評判', openDiary: '日記を読む', morning: '朝の部屋を点検する', kitchen: '朝食の準備を確認する', garden: '菜園を見回る', arrival: '午後の来客に備える', housekeeping: '家事', guests: '来客', groundsFocus: '庭の管理', diaryComplete: '館は格別の優雅さをもって今日の務めを終えました。', diaryPartial: '館はその務めを保ちました。夕刻までに{complete}件の主な仕事を確認しました。', privateAccount: '— 執事の私的な記録', diaryHistory: '日記の履歴',
+    eyebrow: '領地運営シミュレーション', subtitle: '部屋にはそれぞれのリズムがあり、客人にはそれぞれの好みがあります。湖から最後の光が消える前に、館を整えましょう。', begin: '一日を始める', options: 'オプション', settings: '設定', language: '言語', close: '閉じる', save: '設定を保存', correspondence: '館の設定', languageHint: '帳簿、通知、日記で使う言語を選択します。', titleLine: '夜明けとともに、この館はあなたのものです。', season: '季節', weather: '天候', clock: '館の時計', grounds: 'ペンバリー領地', view: '執事の視点', move: '移動', run: '走る', adjust: '視点変更', interact: '調べる', desk: '執事の机', day: '1日目', order: '本日の予定', ring: '館の鐘を鳴らす', closeDay: '一日を閉じて日記を書く', household: '使用人', onDuty: '名が勤務中', staffRoutes: '使用人の巡回', reputation: 'エリザベスの好意', goodOrder: '上向き · 来訪者は好意的', eventLog: '出来事の記録', taskDone: '完了に記録しました', bellNotice: '館の鐘を鳴らしました · 15分経過', nothing: 'ここに必要な仕事はありません。東棟か南の庭へ向かいましょう。', noticeTask: '仕事を記録しました', focus: '担当', sound: '鐘と部屋の環境音', voice: '音声通知', diary: 'ペンバリーの日記 · 夕刻', diaryTitle: 'よく管理された一日', return: '領地へ戻る', another: '新しい一日を始める', diaryText: '西の窓から最後の光が消えました。あなたの記録は館の日記に大切に保管されました。', lastDiary: '最後の日記', diaryDate: '日付', diaryTasks: '完了した仕事', diaryReputation: '評判', openDiary: '日記を読む', morning: '朝の部屋を点検する', kitchen: '朝食の準備を確認する', garden: '菜園を見回る', arrival: '午後の来客に備える', housekeeping: '家事', guests: '来客', groundsFocus: '庭の管理', diaryComplete: '館は格別の優雅さをもって今日の務めを終えました。', diaryPartial: '館はその務めを保ちました。夕刻までに{complete}件の主な仕事を確認しました。', privateAccount: '— 執事の私的な記録', diaryHistory: '日記の履歴', tour: '一行の館内見学', tourWaiting: '館は支度を整えて待っています。一行の到着は午後一時の予定です。', tourShowing: '案内中', tend: '部屋を整える',
   },
   fr: {
-    eyebrow: 'Jeu de gestion d’une maison', subtitle: 'Chaque pièce a son rythme, chaque invité ses préférences. Gardez la maison en ordre avant que la dernière lumière ne quitte le lac.', begin: 'Commencer la journée', options: 'Options', settings: 'Paramètres', language: 'Langue', close: 'Fermer', save: 'Enregistrer les paramètres', correspondence: 'Préférences de la maison', languageHint: 'Choisissez la langue de votre registre, des avis et du journal.', titleLine: 'À la première lueur, la maison vous appartient.', season: 'Saison', weather: 'Météo', clock: 'Horloge de la maison', grounds: 'Domaine de Pemberley', view: 'Vue de l’intendant', move: 'déplacer', run: 'courir', adjust: 'ajuster la vue', interact: 'interagir', desk: 'Bureau de l’intendant', day: 'Jour 01', order: 'Ordre du jour', ring: 'Sonner la cloche de la maison', closeDay: 'Clore la journée et écrire au journal', household: 'Maison', onDuty: 'en service', staffRoutes: 'Rondes du personnel', reputation: 'Réputation de la maison', goodOrder: 'Bon ordre · +2 depuis l’aube', eventLog: 'Journal des événements', taskDone: 'tâche accomplie', bellNotice: 'La cloche a sonné · 15 minutes ont passé', nothing: 'Rien ici ne requiert votre attention. Essayez l’aile est ou les jardins du sud.', noticeTask: 'Tâche enregistrée', focus: 'Affectation', sound: 'Sons ambiants de cloche et de pièces', voice: 'Avis parlés', diary: 'Le journal de Pemberley · soir', diaryTitle: 'Une journée bien menée', return: 'Retour au domaine', another: 'Commencer une autre journée', diaryText: 'La dernière lumière a quitté les fenêtres de l’ouest. Votre compte rendu a été placé en sécurité dans le journal de la maison.', lastDiary: 'Dernière entrée du journal', diaryDate: 'Date', diaryTasks: 'Tâches accomplies', diaryReputation: 'Réputation', openDiary: 'Lire le journal', morning: 'Inspecter les pièces du matin', kitchen: 'Confirmer le service du petit-déjeuner', garden: 'Inspecter le potager', arrival: 'Préparer la venue des visiteurs', housekeeping: 'Intendance', guests: 'Invités', groundsFocus: 'Domaine', diaryComplete: 'La maison a fonctionné avec une grâce rare aujourd’hui ; toutes les tâches ont été accomplies.', diaryPartial: 'La maison a suivi son cours. {complete} tâches principales sur {tasks} ont été vérifiées avant le soir.', privateAccount: '— Compte rendu privé de l’intendant', diaryHistory: 'Historique du journal',
+    eyebrow: 'Jeu de gestion d’une maison', subtitle: 'Chaque pièce a son rythme, chaque invité ses préférences. Gardez la maison en ordre avant que la dernière lumière ne quitte le lac.', begin: 'Commencer la journée', options: 'Options', settings: 'Paramètres', language: 'Langue', close: 'Fermer', save: 'Enregistrer les paramètres', correspondence: 'Préférences de la maison', languageHint: 'Choisissez la langue de votre registre, des avis et du journal.', titleLine: 'À la première lueur, la maison vous appartient.', season: 'Saison', weather: 'Météo', clock: 'Horloge de la maison', grounds: 'Domaine de Pemberley', view: 'Vue de l’intendant', move: 'déplacer', run: 'courir', adjust: 'ajuster la vue', interact: 'interagir', desk: 'Bureau de l’intendant', day: 'Jour 01', order: 'Ordre du jour', ring: 'Sonner la cloche de la maison', closeDay: 'Clore la journée et écrire au journal', household: 'Maison', onDuty: 'en service', staffRoutes: 'Rondes du personnel', reputation: 'Réputation de la maison', goodOrder: 'Bon ordre · +2 depuis l’aube', eventLog: 'Journal des événements', taskDone: 'tâche accomplie', bellNotice: 'La cloche a sonné · 15 minutes ont passé', nothing: 'Rien ici ne requiert votre attention. Essayez l’aile est ou les jardins du sud.', noticeTask: 'Tâche enregistrée', focus: 'Affectation', sound: 'Sons ambiants de cloche et de pièces', voice: 'Avis parlés', diary: 'Le journal de Pemberley · soir', diaryTitle: 'Une journée bien menée', return: 'Retour au domaine', another: 'Commencer une autre journée', diaryText: 'La dernière lumière a quitté les fenêtres de l’ouest. Votre compte rendu a été placé en sécurité dans le journal de la maison.', lastDiary: 'Dernière entrée du journal', diaryDate: 'Date', diaryTasks: 'Tâches accomplies', diaryReputation: 'Réputation', openDiary: 'Lire le journal', morning: 'Inspecter les pièces du matin', kitchen: 'Confirmer le service du petit-déjeuner', garden: 'Inspecter le potager', arrival: 'Préparer la venue des visiteurs', housekeeping: 'Intendance', guests: 'Invités', groundsFocus: 'Domaine', diaryComplete: 'La maison a fonctionné avec une grâce rare aujourd’hui ; toutes les tâches ont été accomplies.', diaryPartial: 'La maison a suivi son cours. {complete} tâches principales sur {tasks} ont été vérifiées avant le soir.', privateAccount: '— Compte rendu privé de l’intendant', diaryHistory: 'Historique du journal', tour: 'La visite des invités', tourWaiting: 'La maison attend. Le groupe est attendu à une heure.', tourShowing: 'En visite', tend: 'Mettre la pièce en ordre',
   },
   de: {
-    eyebrow: 'Ein Spiel zur Haushaltsführung', subtitle: 'Jeder Raum hat seinen Rhythmus, jeder Gast seine Wünsche. Halten Sie das Haus in Ordnung, bevor das letzte Licht den See verlässt.', begin: 'Tag beginnen', options: 'Optionen', settings: 'Einstellungen', language: 'Sprache', close: 'Schließen', save: 'Einstellungen speichern', correspondence: 'Hauspräferenzen', languageHint: 'Wählen Sie die Sprache für Ihr Haushaltsbuch, Ihre Hinweise und Ihr Tagebuch.', titleLine: 'Im ersten Licht gehört das Haus Ihnen.', season: 'Jahreszeit', weather: 'Wetter', clock: 'Hausuhr', grounds: 'Pemberley-Anwesen', view: 'Blick des Verwalters', move: 'bewegen', run: 'laufen', adjust: 'Ansicht anpassen', interact: 'interagieren', desk: 'Schreibtisch des Verwalters', day: 'Tag 01', order: 'Heutige Aufgaben', ring: 'Hausglocke läuten', closeDay: 'Tag beenden und Tagebuch schreiben', household: 'Haushalt', onDuty: 'im Dienst', staffRoutes: 'Routen des Personals', reputation: 'Ansehen des Hauses', goodOrder: 'Gute Ordnung · +2 seit Tagesanbruch', eventLog: 'Ereignisprotokoll', taskDone: 'als erledigt markiert', bellNotice: 'Die Hausglocke wurde geläutet · 15 Minuten vergangen', nothing: 'Hier braucht nichts Ihre Aufmerksamkeit. Versuchen Sie es im Ostflügel oder im Südgarten.', noticeTask: 'Aufgabe aufgezeichnet', focus: 'Zuständigkeit', sound: 'Stimmungsvolle Glocken- und Raumgeräusche', voice: 'Gesprochene Hinweise', diary: 'Das Pemberley-Tagebuch · Abend', diaryTitle: 'Ein wohlgeführter Tag', return: 'Zum Anwesen zurückkehren', another: 'Einen weiteren Tag beginnen', diaryText: 'Das letzte Licht ist aus den westlichen Fenstern gewichen. Ihr Bericht wurde sicher im Haushaltstagebuch abgelegt.', lastDiary: 'Letzter Tagebucheintrag', diaryDate: 'Datum', diaryTasks: 'Erledigte Aufgaben', diaryReputation: 'Ansehen', openDiary: 'Tagebuch lesen', morning: 'Die Morgenräume prüfen', kitchen: 'Frühstücksservice bestätigen', garden: 'Küchengarten prüfen', arrival: 'Auf die Nachmittagsgäste vorbereiten', housekeeping: 'Haushalt', guests: 'Gäste', groundsFocus: 'Anwesen', diaryComplete: 'Das Haus erfüllte heute jede Pflicht mit ungewöhnlicher Anmut; alle Aufgaben wurden erledigt.', diaryPartial: 'Der Haushalt hielt seinen Kurs. Vor dem Abend wurden {complete} von {tasks} Hauptaufgaben erledigt.', privateAccount: '— Privater Bericht des Verwalters', diaryHistory: 'Tagebuchverlauf',
+    eyebrow: 'Ein Spiel zur Haushaltsführung', subtitle: 'Jeder Raum hat seinen Rhythmus, jeder Gast seine Wünsche. Halten Sie das Haus in Ordnung, bevor das letzte Licht den See verlässt.', begin: 'Tag beginnen', options: 'Optionen', settings: 'Einstellungen', language: 'Sprache', close: 'Schließen', save: 'Einstellungen speichern', correspondence: 'Hauspräferenzen', languageHint: 'Wählen Sie die Sprache für Ihr Haushaltsbuch, Ihre Hinweise und Ihr Tagebuch.', titleLine: 'Im ersten Licht gehört das Haus Ihnen.', season: 'Jahreszeit', weather: 'Wetter', clock: 'Hausuhr', grounds: 'Pemberley-Anwesen', view: 'Blick des Verwalters', move: 'bewegen', run: 'laufen', adjust: 'Ansicht anpassen', interact: 'interagieren', desk: 'Schreibtisch des Verwalters', day: 'Tag 01', order: 'Heutige Aufgaben', ring: 'Hausglocke läuten', closeDay: 'Tag beenden und Tagebuch schreiben', household: 'Haushalt', onDuty: 'im Dienst', staffRoutes: 'Routen des Personals', reputation: 'Ansehen des Hauses', goodOrder: 'Gute Ordnung · +2 seit Tagesanbruch', eventLog: 'Ereignisprotokoll', taskDone: 'als erledigt markiert', bellNotice: 'Die Hausglocke wurde geläutet · 15 Minuten vergangen', nothing: 'Hier braucht nichts Ihre Aufmerksamkeit. Versuchen Sie es im Ostflügel oder im Südgarten.', noticeTask: 'Aufgabe aufgezeichnet', focus: 'Zuständigkeit', sound: 'Stimmungsvolle Glocken- und Raumgeräusche', voice: 'Gesprochene Hinweise', diary: 'Das Pemberley-Tagebuch · Abend', diaryTitle: 'Ein wohlgeführter Tag', return: 'Zum Anwesen zurückkehren', another: 'Einen weiteren Tag beginnen', diaryText: 'Das letzte Licht ist aus den westlichen Fenstern gewichen. Ihr Bericht wurde sicher im Haushaltstagebuch abgelegt.', lastDiary: 'Letzter Tagebucheintrag', diaryDate: 'Datum', diaryTasks: 'Erledigte Aufgaben', diaryReputation: 'Ansehen', openDiary: 'Tagebuch lesen', morning: 'Die Morgenräume prüfen', kitchen: 'Frühstücksservice bestätigen', garden: 'Küchengarten prüfen', arrival: 'Auf die Nachmittagsgäste vorbereiten', housekeeping: 'Haushalt', guests: 'Gäste', groundsFocus: 'Anwesen', diaryComplete: 'Das Haus erfüllte heute jede Pflicht mit ungewöhnlicher Anmut; alle Aufgaben wurden erledigt.', diaryPartial: 'Der Haushalt hielt seinen Kurs. Vor dem Abend wurden {complete} von {tasks} Hauptaufgaben erledigt.', privateAccount: '— Privater Bericht des Verwalters', diaryHistory: 'Tagebuchverlauf', tour: 'Der Rundgang der Besucher', tourWaiting: 'Das Haus wartet. Die Gesellschaft wird um ein Uhr erwartet.', tourShowing: 'Wird gezeigt', tend: 'Den Raum herrichten',
   },
   es: {
-    eyebrow: 'Un juego de gestión doméstica', subtitle: 'Cada habitación tiene su ritmo y cada huésped sus preferencias. Mantén la casa en orden antes de que la última luz abandone el lago.', begin: 'Comenzar el día', options: 'Opciones', settings: 'Ajustes', language: 'Idioma', close: 'Cerrar', save: 'Guardar ajustes', correspondence: 'Preferencias de la casa', languageHint: 'Elige el idioma del registro, los avisos y el diario.', titleLine: 'Con la primera luz, la casa es tuya.', season: 'Estación', weather: 'Tiempo', clock: 'Reloj de la casa', grounds: 'Terrenos de Pemberley', view: 'Vista del administrador', move: 'mover', run: 'correr', adjust: 'ajustar vista', interact: 'interactuar', desk: 'Escritorio del administrador', day: 'Día 01', order: 'Orden de hoy', ring: 'Tocar la campana de la casa', closeDay: 'Cerrar el día y escribir en el diario', household: 'Casa', onDuty: 'de servicio', staffRoutes: 'Rutas del personal', reputation: 'Reputación de la casa', goodOrder: 'Buen orden · +2 desde el amanecer', eventLog: 'Registro de eventos', taskDone: 'marcada como completada', bellNotice: 'La campana ha sonado · han pasado 15 minutos', nothing: 'Nada aquí requiere tu atención. Prueba en el ala este o en los jardines del sur.', noticeTask: 'Tarea registrada', focus: 'Encargo', sound: 'Sonidos ambientales de campanas y habitaciones', voice: 'Avisos hablados', diary: 'El diario de Pemberley · tarde', diaryTitle: 'Un día bien administrado', return: 'Volver a los terrenos', another: 'Comenzar otro día', diaryText: 'La última luz se ha marchado de las ventanas del oeste. Tu informe se ha guardado a salvo en el diario de la casa.', lastDiary: 'Última entrada del diario', diaryDate: 'Fecha', diaryTasks: 'Tareas completadas', diaryReputation: 'Reputación', openDiary: 'Leer el diario', morning: 'Inspeccionar las salas de la mañana', kitchen: 'Confirmar el servicio del desayuno', garden: 'Revisar el huerto', arrival: 'Prepararse para las visitas de la tarde', housekeeping: 'Tareas domésticas', guests: 'Invitados', groundsFocus: 'Terrenos', diaryComplete: 'Hoy la casa funcionó con una gracia excepcional; todas las tareas fueron atendidas.', diaryPartial: 'La casa mantuvo el rumbo. Antes de la tarde se atendieron {complete} de {tasks} tareas principales.', privateAccount: '— Informe privado del administrador', diaryHistory: 'Historial del diario',
+    eyebrow: 'Un juego de gestión doméstica', subtitle: 'Cada habitación tiene su ritmo y cada huésped sus preferencias. Mantén la casa en orden antes de que la última luz abandone el lago.', begin: 'Comenzar el día', options: 'Opciones', settings: 'Ajustes', language: 'Idioma', close: 'Cerrar', save: 'Guardar ajustes', correspondence: 'Preferencias de la casa', languageHint: 'Elige el idioma del registro, los avisos y el diario.', titleLine: 'Con la primera luz, la casa es tuya.', season: 'Estación', weather: 'Tiempo', clock: 'Reloj de la casa', grounds: 'Terrenos de Pemberley', view: 'Vista del administrador', move: 'mover', run: 'correr', adjust: 'ajustar vista', interact: 'interactuar', desk: 'Escritorio del administrador', day: 'Día 01', order: 'Orden de hoy', ring: 'Tocar la campana de la casa', closeDay: 'Cerrar el día y escribir en el diario', household: 'Casa', onDuty: 'de servicio', staffRoutes: 'Rutas del personal', reputation: 'Reputación de la casa', goodOrder: 'Buen orden · +2 desde el amanecer', eventLog: 'Registro de eventos', taskDone: 'marcada como completada', bellNotice: 'La campana ha sonado · han pasado 15 minutos', nothing: 'Nada aquí requiere tu atención. Prueba en el ala este o en los jardines del sur.', noticeTask: 'Tarea registrada', focus: 'Encargo', sound: 'Sonidos ambientales de campanas y habitaciones', voice: 'Avisos hablados', diary: 'El diario de Pemberley · tarde', diaryTitle: 'Un día bien administrado', return: 'Volver a los terrenos', another: 'Comenzar otro día', diaryText: 'La última luz se ha marchado de las ventanas del oeste. Tu informe se ha guardado a salvo en el diario de la casa.', lastDiary: 'Última entrada del diario', diaryDate: 'Fecha', diaryTasks: 'Tareas completadas', diaryReputation: 'Reputación', openDiary: 'Leer el diario', morning: 'Inspeccionar las salas de la mañana', kitchen: 'Confirmar el servicio del desayuno', garden: 'Revisar el huerto', arrival: 'Prepararse para las visitas de la tarde', housekeeping: 'Tareas domésticas', guests: 'Invitados', groundsFocus: 'Terrenos', diaryComplete: 'Hoy la casa funcionó con una gracia excepcional; todas las tareas fueron atendidas.', diaryPartial: 'La casa mantuvo el rumbo. Antes de la tarde se atendieron {complete} de {tasks} tareas principales.', privateAccount: '— Informe privado del administrador', diaryHistory: 'Historial del diario', tour: 'La visita de los huéspedes', tourWaiting: 'La casa espera. Se aguarda al grupo a la una.', tourShowing: 'En visita', tend: 'Poner la sala en orden',
   },
   zh: {
-    eyebrow: '庄园管理游戏', subtitle: '每个房间都有自己的节奏，每位客人都有自己的偏好。在湖畔最后一缕光线消失前，让宅邸保持井然有序。', begin: '开始一天', options: '选项', settings: '设置', language: '语言', close: '关闭', save: '保存设置', correspondence: '宅邸偏好', languageHint: '选择账簿、通知和日记使用的语言。', titleLine: '晨光初现时，这座宅邸属于你。', season: '季节', weather: '天气', clock: '宅邸时钟', grounds: '彭伯利庄园', view: '管家的视角', move: '移动', run: '奔跑', adjust: '调整视角', interact: '互动', desk: '管家书桌', day: '第01天', order: '今日安排', ring: '敲响宅邸钟声', closeDay: '结束一天并写日记', household: '宅邸人员', onDuty: '人值班', staffRoutes: '人员巡查', reputation: '宅邸声誉', goodOrder: '秩序良好 · 自黎明起+2', eventLog: '事件记录', taskDone: '已标记完成', bellNotice: '宅邸钟声已响 · 时间推进15分钟', nothing: '这里没有需要你处理的事。可以前往东翼或南侧花园。', noticeTask: '任务已记录', focus: '职责', sound: '钟声与房间环境音', voice: '语音通知', diary: '彭伯利日记 · 夜晚', diaryTitle: '井然有序的一天', return: '返回庄园', another: '开始新的一天', diaryText: '西侧窗外的最后一缕光线已经消失。你的记录已妥善存入宅邸日记。', lastDiary: '最近的日记', diaryDate: '日期', diaryTasks: '完成的职责', diaryReputation: '声誉', openDiary: '阅读日记', morning: '检查早晨的房间', kitchen: '确认早餐服务', garden: '查看厨房花园', arrival: '准备迎接午后访客', housekeeping: '家务', guests: '客人', groundsFocus: '庄园', diaryComplete: '今天宅邸运转得格外优雅；每项职责都已妥善完成。', diaryPartial: '宅邸维持着应有的秩序。傍晚前已完成{tasks}项主要职责中的{complete}项。', privateAccount: '— 管家的私人记录', diaryHistory: '日记历史',
+    eyebrow: '庄园管理游戏', subtitle: '每个房间都有自己的节奏，每位客人都有自己的偏好。在湖畔最后一缕光线消失前，让宅邸保持井然有序。', begin: '开始一天', options: '选项', settings: '设置', language: '语言', close: '关闭', save: '保存设置', correspondence: '宅邸偏好', languageHint: '选择账簿、通知和日记使用的语言。', titleLine: '晨光初现时，这座宅邸属于你。', season: '季节', weather: '天气', clock: '宅邸时钟', grounds: '彭伯利庄园', view: '管家的视角', move: '移动', run: '奔跑', adjust: '调整视角', interact: '互动', desk: '管家书桌', day: '第01天', order: '今日安排', ring: '敲响宅邸钟声', closeDay: '结束一天并写日记', household: '宅邸人员', onDuty: '人值班', staffRoutes: '人员巡查', reputation: '宅邸声誉', goodOrder: '秩序良好 · 自黎明起+2', eventLog: '事件记录', taskDone: '已标记完成', bellNotice: '宅邸钟声已响 · 时间推进15分钟', nothing: '这里没有需要你处理的事。可以前往东翼或南侧花园。', noticeTask: '任务已记录', focus: '职责', sound: '钟声与房间环境音', voice: '语音通知', diary: '彭伯利日记 · 夜晚', diaryTitle: '井然有序的一天', return: '返回庄园', another: '开始新的一天', diaryText: '西侧窗外的最后一缕光线已经消失。你的记录已妥善存入宅邸日记。', lastDiary: '最近的日记', diaryDate: '日期', diaryTasks: '完成的职责', diaryReputation: '声誉', openDiary: '阅读日记', morning: '检查早晨的房间', kitchen: '确认早餐服务', garden: '查看厨房花园', arrival: '准备迎接午后访客', housekeeping: '家务', guests: '客人', groundsFocus: '庄园', diaryComplete: '今天宅邸运转得格外优雅；每项职责都已妥善完成。', diaryPartial: '宅邸维持着应有的秩序。傍晚前已完成{tasks}项主要职责中的{complete}项。', privateAccount: '— 管家的私人记录', diaryHistory: '日记历史', tour: '访客的参观', tourWaiting: '宅邸已备好，正在等候。一行预计午后一时到达。', tourShowing: '参观中', tend: '整理房间',
   },
 };
 
@@ -620,6 +621,11 @@ function App() {
   const [roomFade, setRoomFade] = useState(false);
   const eventSystemRef = useRef(new EventSystem());
   const guestManagerRef = useRef(new GuestManager());
+  const tourSystemRef = useRef(new TourSystem());
+  const [tourReadiness, setTourReadiness] = useState<Record<TourRoomId, number>>(() => ({ ...tourSystemRef.current.readiness }));
+  const [tourRoomId, setTourRoomId] = useState<TourRoomId | null>(null);
+  const tourProcessedRef = useRef(-1);
+  const tourSettledRef = useRef(false);
   const [emergencies, setEmergencies] = useState<EmergencyEvent[]>([]);
   const [guestStates, setGuestStates] = useState<GuestState[]>([]);
   const [staffMorale, setStaffMorale] = useState(86);
@@ -679,6 +685,9 @@ function App() {
     return hit || null;
   }, [player]);
   const nearbyEmergency = useMemo(() => emergencies.find(event => Math.hypot(event.point.x - player.x, event.point.y - player.y) < 3.3) || null, [emergencies, player]);
+  const nearbyRoom = useMemo(() => tourRooms.find(room => Math.hypot(room.point.x - player.x, room.point.y - player.y) < 3) || null, [player]);
+  const tourLiveRef = useRef({ focuses, emergencies });
+  tourLiveRef.current = { focuses, emergencies };
   const addLog = useCallback((text: string) => {
     setLogs(current => [{ time: formatTime(minutes), text }, ...current].slice(0, 7));
   }, [minutes]);
@@ -789,6 +798,49 @@ function App() {
     }
   }, [announce, minutes, phase]);
 
+  const tendRoom = useCallback((roomId: TourRoomId) => {
+    const tour = tourSystemRef.current;
+    const room = tourRooms.find(item => item.id === roomId);
+    if (!room) return;
+    if (tour.readiness[roomId] >= 99) {
+      notify(language === 'ja' ? `${localized(room.name, language)}はすでに整っています。` : `${localized(room.name, language)} is already in good order.`);
+      return;
+    }
+    tour.tend(roomId);
+    setTourReadiness({ ...tour.readiness });
+    setMinutes(value => Math.min(value + 5, 17 * 60 + 30));
+    const text = language === 'ja'
+      ? `${localized(room.name, language)}を整えました。`
+      : `${localized(room.name, language)} set a little more in order.`;
+    addLog(text);
+    notify(text);
+    speak(text, tts, language, voiceRate);
+    audioRef.current?.eventTone('report');
+  }, [addLog, notify, language, tts, voiceRate]);
+
+  // 見学順路：各ゲーム内分に一度だけ進める（focuses/emergencies の変化で二重に進めない）
+  useEffect(() => {
+    if (phase !== 'game') return;
+    if (tourProcessedRef.current === minutes) return;
+    tourProcessedRef.current = minutes;
+    const tour = tourSystemRef.current;
+    const { focuses: liveFocuses, emergencies: liveEmergencies } = tourLiveRef.current;
+    const busy = new Set(liveEmergencies.filter(event => event.assignedStaffId).map(event => event.assignedStaffId as string));
+    const observation = tour.advance(minutes, liveFocuses, busy);
+    setTourReadiness({ ...tour.readiness });
+    setTourRoomId(tour.currentRoom?.id ?? null);
+    if (observation) announce(observation.line, observation.band === 'wanting' ? 'warning' : 'report');
+    const impression = tour.settledImpression;
+    if (impression !== null && !tourSettledRef.current) {
+      tourSettledRef.current = true;
+      const delta = Math.max(-6, Math.min(8, Math.round((impression - 60) / 5)));
+      setReputation(value => Math.max(0, Math.min(100, value + delta)));
+      setGuestStates(impression >= 60
+        ? guestManagerRef.current.please(Math.max(1, Math.round((impression - 55) / 6)))
+        : guestManagerRef.current.disappoint(Math.max(1, Math.round((60 - impression) / 5))));
+    }
+  }, [announce, minutes, phase]);
+
   useEffect(() => {
     if (phase !== 'game') return;
     const onKey = (event: KeyboardEvent) => {
@@ -796,6 +848,8 @@ function App() {
       if (event.key.toLowerCase() === 'e' && event.type === 'keydown') {
         if (nearbyEmergency) {
           resolveEmergency(nearbyEmergency);
+        } else if (nearbyRoom) {
+          tendRoom(nearbyRoom.id);
         } else if (nearby) {
           setCompleted(current => current.includes(nearby.label) ? current : [...current, nearby.label]);
           setReputation(value => Math.min(100, value + (completed.includes(nearby.label) ? 0 : 2)));
@@ -844,7 +898,7 @@ function App() {
     };
     raf = requestAnimationFrame(move);
     return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); };
-  }, [phase, nearby, nearbyEmergency, addLog, notify, resolveEmergency, tts, completed, emergencies.length]);
+  }, [phase, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length]);
 
   useEffect(() => {
     if (phase !== 'game') return;
@@ -858,6 +912,11 @@ function App() {
     setEmergencies([]);
     setGuestStates(guestManagerRef.current.reset(dayNumber));
     setStaffMorale(86);
+    tourSystemRef.current.reset();
+    setTourReadiness({ ...tourSystemRef.current.readiness });
+    setTourRoomId(null);
+    tourProcessedRef.current = -1;
+    tourSettledRef.current = false;
     setPhase('game');
     addLog('The steward has entered the grounds. A full day lies ahead.');
      speak(language === 'ja' ? 'おはようございます。館はあなたの指示を待っています。' : 'Good morning. The house awaits your direction.', tts, language);
@@ -877,6 +936,10 @@ function App() {
   const interact = () => {
     if (nearbyEmergency) {
       resolveEmergency(nearbyEmergency);
+      return;
+    }
+    if (nearbyRoom) {
+      tendRoom(nearbyRoom.id);
       return;
     }
     if (!nearby) {
@@ -899,6 +962,7 @@ function App() {
       reputation,
       guestMood: guestStates[0]?.mood ?? 82,
       pianoPlayed: pianoScore > 0,
+      tourImpression: tourSystemRef.current.settledImpression ?? undefined,
     });
     const entry = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), complete: completed.length, reputation, day: dayNumber, prose };
     const nextEntries = [...diaryEntries, entry];
@@ -911,6 +975,7 @@ function App() {
       skipEventTimelineRef.current = true;
       skipEmergencyTimelineRef.current = true;
       eventSystemRef.current.reset(); emergencySpawnedRef.current.clear(); setEmergencies([]); setGuestStates(guestManagerRef.current.reset(dayNumber + 1)); setStaffMorale(86);
+      tourSystemRef.current.reset(); setTourReadiness({ ...tourSystemRef.current.readiness }); setTourRoomId(null); tourProcessedRef.current = -1; tourSettledRef.current = false;
      setMinutes(7 * 60 + 35); setDayNumber(value => value + 1); setCompleted([]); setReputation(74); setLogs(initialLogs); setPlayer({ x: 0, y: 7 }); playerRef.current = { x: 0, y: 7 }; firedEventsRef.current.clear(); setDiaryOpen(false); notify('A new morning has been prepared.');
   }
 
@@ -955,6 +1020,18 @@ function App() {
              })}
            </div>
            {!emergencies.length && <p className="calm-note">{copy.calm}</p>}
+           <div className="section-label">{t('tour')}{tourRoomId ? ` · ${localized(tourRooms.find(room => room.id === tourRoomId)!.name, language)}` : ''}</div>
+           <div className="tour-rooms">
+             {tourRooms.map(room => {
+               const value = Math.round(tourReadiness[room.id]);
+               const showing = tourRoomId === room.id;
+               return <div className={`tour-room ${showing ? 'showing' : ''}`} key={room.id}>
+                 <div className="tour-room-top"><b>{localized(room.name, language)}</b><span className="mono">{showing ? t('tourShowing') : `${value}%`}</span></div>
+                 <div className="progress"><i style={{ width: `${value}%` }} /></div>
+               </div>;
+             })}
+           </div>
+           {tourRoomId === null && <p className="tour-wait">{t('tourWaiting')}</p>}
            <div className="section-label">{copy.duties} · {completed.length}/{tasks.length}</div>
            {tasks.map(task => <label className={`task ${completed.includes(task.id) ? 'done' : ''}`} key={task.id}><input type="checkbox" aria-label={task.title} checked={completed.includes(task.id)} onChange={() => { setCompleted(current => current.includes(task.id) ? current.filter(id => id !== task.id) : [...current, task.id]); addLog(`${task.title} was ${completed.includes(task.id) ? 'returned to the ledger' : 'marked complete'}.`); }} /><span><b>{task.title}</b>{task.meta}</span></label>)}
            <button className="bell-button" onClick={ringBell}><Bell size={15} /> {t('ring')}</button>
@@ -964,7 +1041,7 @@ function App() {
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
            <EstateCanvas mode="game" player={player} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
            {roomFade && <div className="room-transition" aria-hidden="true" />}
-           {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
+           {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
            <button className="touch-action" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); interact(); }} aria-label={t('interact')}>E</button>
            <button ref={pianoTriggerRef} className="piano-launch" onClick={() => { setPianoOpen(true); audioRef.current?.start(); }} aria-label="Open piano">♫</button>
@@ -977,7 +1054,7 @@ function App() {
            <div className="section-label">{t('staffRoutes')}</div>
             <div className="status-meters"><div><span>{copy.guestMood}</span><b>{guestStates[0]?.mood ?? 82}%</b></div><div><span>{copy.staffMorale}</span><b>{staffMorale}%</b></div></div>
             {guestStates.map(guest => <div className="guest-card" key={guest.id}><div><strong>{guest.name}</strong><small>{guest.title}</small></div><b>{guest.mood}%</b><p>“{localized(guest.line, language)}”</p><small>{copy.preferences}: {guest.preferences.join(' · ')}</small></div>)}
-            {staff.map(person => <div key={person.id} className={`staff-card ${selectedStaff === person.id ? 'selected' : ''}`} onClick={() => setSelectedStaff(person.id)}><div className="staff-row"><div className="avatar" style={{ background: person.color }}>{person.initials}</div><div><strong>{person.name}</strong><small>{person.role}</small></div><i className="status-dot" /></div>{selectedStaff === person.id && <div className="focus-row">{emergencies.slice(0, 3).map(event => <button key={event.id} className="focus-btn" onClick={(clickEvent) => { clickEvent.stopPropagation(); dispatchStaff(event, person); }}>{copy.dispatch} · {localized(event.location, language)}</button>)}{!emergencies.length && ['housekeeping', 'guests', 'groundsFocus'].map(focus => <button key={focus} className={`focus-btn ${focuses[person.id] === focus ? 'active' : ''}`} onClick={(event) => { event.stopPropagation(); setFocuses(current => ({ ...current, [person.id]: focus })); notify(`${person.name} · ${t(focus)}`); }}>{t(focus)}</button>)}</div>}</div>)}
+            {staff.map(person => <div key={person.id} className={`staff-card ${selectedStaff === person.id ? 'selected' : ''}`} onClick={() => setSelectedStaff(person.id)}><div className="staff-row"><div className="avatar" style={{ background: person.color }}>{person.initials}</div><div><strong>{person.name}</strong><small>{person.role}</small></div><i className="status-dot" /></div>{selectedStaff === person.id && <div className="focus-row">{emergencies.slice(0, 3).map(event => <button key={event.id} className="focus-btn" onClick={(clickEvent) => { clickEvent.stopPropagation(); dispatchStaff(event, person); }}>{copy.dispatch} · {localized(event.location, language)}</button>)}{!emergencies.length && tourRooms.map(room => <button key={room.id} className={`focus-btn ${focuses[person.id] === room.focus ? 'active' : ''}`} onClick={(event) => { event.stopPropagation(); setFocuses(current => ({ ...current, [person.id]: room.focus })); notify(`${person.name} · ${localized(room.name, language)}`); }}>{localized(room.name, language)}</button>)}</div>}</div>)}
            <div className="section-label">{t('eventLog')}</div>
           <ul className="log">{logs.map((item, i) => <li key={`${item.time}-${i}`}><time>{item.time}</time>{item.text}</li>)}</ul>
           <div style={{ color: '#87a095', fontSize: 10, marginTop: 16, lineHeight: 1.6 }}><Wind size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Wind from the west · lake path is slick</div>
