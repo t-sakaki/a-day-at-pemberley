@@ -2,16 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 
 const householdEvents = {
   en: [
-    'Mrs. Bennet reports: the morning rooms are ready, but the east corridor still wants attention.',
-    'Lady Catherine has arrived at the front hall. Her party expects the house to be in perfect order.',
-    'A pointed note from Lady Catherine: she has observed a delay in the household arrangements.',
-    'Mr. Reynolds reports: the lake path is secure and the staff are returning to their evening routes.',
+    'Mrs. Reynolds reports: the portrait gallery is ready to be shown, but the music room still wants attention.',
+    'A travelling party has asked at the door whether the house may be seen. Mrs. Reynolds is ready to lead them through.',
+    'One of the visitors—a young lady from Hertfordshire—lets her eye rest a moment too long on a room not quite in order.',
+    'Thomas reports: the visitors have walked down to the lake, and the grounds are showing at their best.',
   ],
   ja: [
-    'ベネット夫人の報告です。朝の部屋は整いましたが、東廊下にはまだ手入れが必要です。',
-    'キャサリン夫人が玄関ホールに到着しました。一行は館が完璧に整っていることを望んでいます。',
-    'キャサリン夫人から厳しい伝言です。館の手配に遅れがあるとのことです。',
-    'レイノルズ氏の報告です。湖畔の道は安全で、使用人たちは夕刻の巡回へ戻っています。',
+    'レイノルズ夫人の報告です。肖像画の間はご案内できますが、音楽室にはまだ手入れが必要です。',
+    '旅の一行が、館を拝見できるかと戸口で尋ねています。レイノルズ夫人が館内をご案内する用意をしています。',
+    '来訪者のひとり——ハートフォードシャーの若い令嬢——が、十分に整っていない部屋にわずかに長く視線をとどめました。',
+    'トマスの報告です。来訪者たちは湖へ下りていき、庭園は最も美しい姿を見せています。',
   ],
 } as const;
 
@@ -117,7 +117,7 @@ test('starts the day, saves language, completes a task, and writes the diary', a
 
   await page.getByRole('button', { name: '一日を閉じて日記を書く' }).click();
   await expect(page.getByRole('heading', { name: 'よく管理された一日' })).toBeVisible();
-  await expect(page.locator('.diary-entry')).toContainText('1件');
+  await expect(page.locator('.diary-entry')).toContainText('手つかずのまま残り');
   const storageState = await page.context().storageState();
   const savedEntry = await page.evaluate(() => JSON.parse(localStorage.getItem('pemberley-diary')!));
   const freshContext = await browser.newContext({ storageState });
@@ -147,7 +147,7 @@ test('preserves and browses multiple diary entries', async ({ page, isMobile }) 
   await expect(page.locator('.diary-history-item')).toHaveCount(2);
   await page.getByRole('button', { name: /21 August 1812/ }).click({ force: true });
   await expect(page.locator('.diary-entry')).toContainText('1 of 4 principal duties');
-  await expect(page.locator('.modal')).toContainText('House reputation 76');
+  await expect(page.locator('.modal')).toContainText('Elizabeth’s good opinion 76');
   await expect(page.locator('.modal')).toContainText('1/4');
 });
 
@@ -166,8 +166,8 @@ test('keeps diary history readable when switching between all supported language
   ];
 
   const localizedDiary = {
-    en: { label: 'Language', open: /Read the diary/, close: 'Return to grounds', historyReputation: 'House reputation', modalReputation: 'House reputation', account: 'The household held its course.' },
-    ja: { label: '言語', open: /日記を読む/, close: '領地へ戻る', historyReputation: '評判', modalReputation: '評判', account: '館はその務めを保ちました。' },
+    en: { label: 'Language', open: /Read the diary/, close: 'Return to grounds', historyReputation: 'Elizabeth’s good opinion', modalReputation: 'Elizabeth’s good opinion', account: 'The household held its course.' },
+    ja: { label: '言語', open: /日記を読む/, close: '領地へ戻る', historyReputation: 'エリザベスの好意', modalReputation: 'エリザベスの好意', account: '館はその務めを保ちました。' },
     fr: { label: 'Langue', open: /Lire le journal/, close: 'Retour au domaine', historyReputation: 'Réputation de la maison', modalReputation: 'Réputation de la maison', account: 'La maison a suivi son cours.' },
     de: { label: 'Sprache', open: /Tagebuch lesen/, close: 'Zum Anwesen zurückkehren', historyReputation: 'Ansehen des Hauses', modalReputation: 'Ansehen des Hauses', account: 'Der Haushalt hielt seinen Kurs.' },
     es: { label: 'Idioma', open: /Leer el diario/, close: 'Volver a los terrenos', historyReputation: 'Reputación de la casa', modalReputation: 'Reputación de la casa', account: 'La casa mantuvo el rumbo.' },
@@ -317,7 +317,7 @@ test('wraps long localized diary dates without clipping the saved account or clo
     expect(modalBox!.x + modalBox!.width).toBeLessThanOrEqual(viewport!.width);
 
     await expect(modal.locator('.diary-entry')).toBeVisible();
-    await expect(modal.locator('.diary-stats')).toContainText(language === 'en' ? 'House reputation 82' : '館の評判 82');
+    await expect(modal.locator('.diary-stats')).toContainText(language === 'en' ? 'Elizabeth’s good opinion 82' : 'エリザベスの好意 82');
     const accountBox = await modal.locator('.diary-entry').boundingBox();
     expect(accountBox).not.toBeNull();
     expect(accountBox!.x).toBeGreaterThanOrEqual(0);
@@ -354,7 +354,7 @@ test('keeps a large mobile diary history scrollable while the selected account a
   await oldest.click();
   await expect(oldest).toHaveClass(/active/);
   await expect(modal.locator('.diary-entry')).toContainText('0 of 4 principal duties');
-  await expect(modal.locator('.diary-stats')).toContainText('House reputation 60');
+  await expect(modal.locator('.diary-stats')).toContainText('Elizabeth’s good opinion 60');
 
   const viewport = page.viewportSize();
   const accountBox = await modal.locator('.diary-entry').boundingBox();
@@ -400,7 +400,7 @@ test('supports keyboard-only browsing from the diary history to the return actio
   await page.keyboard.press('Enter');
   await expect(oldest).toHaveClass(/active/);
   await expect(modal.locator('.diary-entry')).toContainText('0 of 4 principal duties');
-  await expect(modal.locator('.diary-stats')).toContainText('House reputation 60');
+  await expect(modal.locator('.diary-stats')).toContainText('Elizabeth’s good opinion 60');
 
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
@@ -625,7 +625,7 @@ test('keeps both diary records after closing two days', async ({ page, isMobile 
 
   await expect(page.locator('.diary-history-item')).toHaveCount(2);
   await page.getByRole('button', { name: new RegExp(savedEntries[0].date) }).last().click();
-  await expect(page.locator('.modal')).toContainText(`House reputation ${savedEntries[0].reputation}`);
+  await expect(page.locator('.modal')).toContainText(`Elizabeth’s good opinion ${savedEntries[0].reputation}`);
   await expect(page.locator('.modal')).toContainText(`${savedEntries[0].complete}/4`);
 });
 
@@ -688,8 +688,8 @@ test('resolves the morning spill nearby in English and Japanese on desktop and m
     await spawnMorningSpill(page);
 
     const localized = language === 'en'
-      ? { heading: 'Urgent events', resolve: 'Resolve', dispatch: 'Dispatch', staff: 'Mrs. Bennet', assigned: 'Assigned' }
-      : { heading: '緊急の出来事', resolve: '解決', dispatch: '派遣', staff: 'Mrs. Bennet', assigned: '担当' };
+      ? { heading: 'Urgent events', resolve: 'Resolve', dispatch: 'Dispatch', staff: 'Mrs. Reynolds', assigned: 'Assigned' }
+      : { heading: '緊急の出来事', resolve: '解決', dispatch: '派遣', staff: 'Mrs. Reynolds', assigned: '担当' };
     const eventCard = page.locator('.emergency-card').first();
     await expect(page.getByText(localized.heading, { exact: false })).toBeVisible();
     await expect(eventCard).toContainText(localized.resolve);
@@ -715,28 +715,28 @@ test('renders emergency cards, dialogue, and guest mood copy in every remaining 
       heading: 'Événements urgents',
       title: 'Un liquide renversé doit être nettoyé immédiatement dans les salons du matin.',
       location: 'Salons du matin',
-      guest: 'Lady Catherine est arrivée dans le vestibule sans prévenir.',
+      guest: 'La voiture de louage des Gardiner a franchi la loge ; ils demandent si l’on peut visiter la maison.',
       mood: 'Humeur des invités',
     },
     de: {
       heading: 'Dringende Ereignisse',
       title: 'In den Morgenräumen muss eine verschüttete Flüssigkeit sofort beseitigt werden.',
       location: 'Morgenräume',
-      guest: 'Lady Catherine ist unangekündigt in der Eingangshalle eingetroffen.',
+      guest: 'Die Mietkutsche der Gardiners ist am Pförtnerhaus eingebogen; sie fragen, ob das Haus besichtigt werden darf.',
       mood: 'Gästestimmung',
     },
     es: {
       heading: 'Situaciones urgentes',
       title: 'Hay que atender de inmediato un derrame en las salas de la mañana.',
       location: 'Salas de la mañana',
-      guest: 'Lady Catherine ha llegado al vestíbulo sin avisar.',
+      guest: 'El carruaje alquilado de los Gardiner ha entrado por la casa del guarda; preguntan si se puede ver la casa.',
       mood: 'Ánimo de los invitados',
     },
     zh: {
       heading: '紧急事件',
       title: '晨间房间有洒出的液体，需要立即处理。',
       location: '晨间房间',
-      guest: '凯瑟琳夫人未事先通知便抵达了前厅。',
+      guest: '加德纳夫妇租来的马车已驶入门房，他们询问是否可以参观宅邸。',
       mood: '客人心情',
     },
   } as const;
@@ -971,14 +971,14 @@ test('switching language during an emergency preserves the event and guest mood'
   const eventCard = page.locator('.emergency-card').first();
   await expect(eventCard).toContainText('Morning rooms');
   await expect(page.locator('.status-meters div').filter({ hasText: 'Guest mood' })).toContainText('82%');
-  await expect(page.locator('.guest-card').first()).toContainText('Lady Catherine has arrived at the front hall without notice.');
+  await expect(page.locator('.guest-card').first()).toContainText('The Gardiners’ hired carriage has turned in at the lodge; they have asked whether the house may be seen.');
 
   await page.getByRole('button', { name: 'Open settings' }).evaluate(button => (button as HTMLButtonElement).click());
   await page.getByRole('dialog').locator('select').selectOption('fr');
   await expect(eventCard).toHaveCount(1);
   await expect(eventCard).toContainText('Salons du matin');
   await expect(page.locator('.status-meters div').filter({ hasText: 'Humeur des invités' })).toContainText('82%');
-  await expect(page.locator('.guest-card').first()).toContainText('Lady Catherine est arrivée dans le vestibule sans prévenir.');
+  await expect(page.locator('.guest-card').first()).toContainText('La voiture de louage des Gardiner a franchi la loge ; ils demandent si l’on peut visiter la maison.');
 });
 
 test('handles an active emergency when no speech voice matches the selected language', async ({ page, isMobile }) => {
