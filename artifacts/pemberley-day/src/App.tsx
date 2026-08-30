@@ -11,13 +11,14 @@ import { WatercolorPass } from './visuals/WatercolorPass';
 import { WatercolorMaterial } from './visuals/WatercolorMaterial';
 import { PaperTextureGenerator, type GeneratedPaperTexture } from './visuals/PaperTextureGenerator';
 import { AtmosphericFog } from './visuals/AtmosphericFog';
+import { composeDiary, type DiaryProse } from './narrative/diary';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
 type Staff = { id: string; name: string; role: string; initials: string; color: string; home: Point; focus: string };
 type BilingualMessage = { en: string; ja: string };
 type EventTone = 'arrival' | 'warning' | 'report' | 'walk';
-type DiaryEntry = { date: string; complete: number; reputation: number; day?: number };
+type DiaryEntry = { date: string; complete: number; reputation: number; day?: number; prose?: DiaryProse };
 
 const languages = [
   { name: 'English (UK)', native: 'English', code: 'en' },
@@ -107,10 +108,10 @@ function Dialog({ open, triggerRef, onClose, className = '', label, children }: 
 
 const translations: Record<Language, Record<string, string>> = {
   en: {
-    eyebrow: 'A household operations game', subtitle: 'Every room has a rhythm. Every guest has a preference. Keep the house in good order before the last light leaves the lake.', begin: 'Begin the day', options: 'Options', settings: 'Settings', language: 'Language', close: 'Close', save: 'Save settings', correspondence: 'House preferences', languageHint: 'Choose the language for your ledger, notices and diary.', titleLine: 'At first light, the house is yours.', season: 'Season', weather: 'Weather', clock: 'House clock', grounds: 'Pemberley grounds', view: 'Steward’s view', move: 'move', run: 'run', adjust: 'adjust view', interact: 'interact', desk: 'Steward’s desk', day: 'Day 01', order: 'Today’s order', ring: 'Ring household bell', closeDay: 'Close day & write diary', household: 'Household', onDuty: 'on duty', staffRoutes: 'Staff routes', reputation: 'House reputation', goodOrder: 'Good order · +2 since dawn', eventLog: 'Event log', taskDone: 'marked complete', bellNotice: 'The household bell has been rung · 15 minutes advanced', nothing: 'Nothing here requires your attention. Try the east wing or south grounds.', noticeTask: 'Task recorded', focus: 'Focus', sound: 'Ambient bell and room sounds', voice: 'Spoken notices', diary: 'The Pemberley diary · evening', diaryTitle: 'A well-managed day', return: 'Return to grounds', another: 'Begin another day', diaryText: 'The last light has gone from the west windows. Your account has been placed safely in the household diary.', lastDiary: 'Last diary entry', diaryDate: 'Date', diaryTasks: 'Duties completed', diaryReputation: 'Reputation', openDiary: 'Read the diary', morning: 'Inspect the morning rooms', kitchen: 'Confirm breakfast service', garden: 'Review the kitchen garden', arrival: 'Prepare for afternoon callers', housekeeping: 'Housekeeping', guests: 'Guests', groundsFocus: 'Grounds', diaryComplete: 'The house ran with uncommon grace today; every duty was seen to.', diaryPartial: 'The household held its course. {complete} of {tasks} principal duties were seen to before evening.', privateAccount: 'Steward’s private account', diaryHistory: 'Diary history',
+    eyebrow: 'A household operations game', subtitle: 'Every room has a rhythm. Every guest has a preference. Keep the house in good order before the last light leaves the lake.', begin: 'Begin the day', options: 'Options', settings: 'Settings', language: 'Language', close: 'Close', save: 'Save settings', correspondence: 'House preferences', languageHint: 'Choose the language for your ledger, notices and diary.', titleLine: 'At first light, the house is yours.', season: 'Season', weather: 'Weather', clock: 'House clock', grounds: 'Pemberley grounds', view: 'Steward’s view', move: 'move', run: 'run', adjust: 'adjust view', interact: 'interact', desk: 'Steward’s desk', day: 'Day 01', order: 'Today’s order', ring: 'Ring household bell', closeDay: 'Close day & write diary', household: 'Household', onDuty: 'on duty', staffRoutes: 'Staff routes', reputation: 'Elizabeth’s good opinion', goodOrder: 'Rising · the visitors are well pleased', eventLog: 'Event log', taskDone: 'marked complete', bellNotice: 'The household bell has been rung · 15 minutes advanced', nothing: 'Nothing here requires your attention. Try the east wing or south grounds.', noticeTask: 'Task recorded', focus: 'Focus', sound: 'Ambient bell and room sounds', voice: 'Spoken notices', diary: 'The Pemberley diary · evening', diaryTitle: 'A well-managed day', return: 'Return to grounds', another: 'Begin another day', diaryText: 'The last light has gone from the west windows. Your account has been placed safely in the household diary.', lastDiary: 'Last diary entry', diaryDate: 'Date', diaryTasks: 'Duties completed', diaryReputation: 'Reputation', openDiary: 'Read the diary', morning: 'Inspect the morning rooms', kitchen: 'Confirm breakfast service', garden: 'Review the kitchen garden', arrival: 'Prepare for afternoon callers', housekeeping: 'Housekeeping', guests: 'Guests', groundsFocus: 'Grounds', diaryComplete: 'The house ran with uncommon grace today; every duty was seen to.', diaryPartial: 'The household held its course. {complete} of {tasks} principal duties were seen to before evening.', privateAccount: 'Steward’s private account', diaryHistory: 'Diary history',
   },
   ja: {
-    eyebrow: '領地運営シミュレーション', subtitle: '部屋にはそれぞれのリズムがあり、客人にはそれぞれの好みがあります。湖から最後の光が消える前に、館を整えましょう。', begin: '一日を始める', options: 'オプション', settings: '設定', language: '言語', close: '閉じる', save: '設定を保存', correspondence: '館の設定', languageHint: '帳簿、通知、日記で使う言語を選択します。', titleLine: '夜明けとともに、この館はあなたのものです。', season: '季節', weather: '天候', clock: '館の時計', grounds: 'ペンバリー領地', view: '執事の視点', move: '移動', run: '走る', adjust: '視点変更', interact: '調べる', desk: '執事の机', day: '1日目', order: '本日の予定', ring: '館の鐘を鳴らす', closeDay: '一日を閉じて日記を書く', household: '使用人', onDuty: '名が勤務中', staffRoutes: '使用人の巡回', reputation: '館の評判', goodOrder: '良好 · 夜明けから+2', eventLog: '出来事の記録', taskDone: '完了に記録しました', bellNotice: '館の鐘を鳴らしました · 15分経過', nothing: 'ここに必要な仕事はありません。東棟か南の庭へ向かいましょう。', noticeTask: '仕事を記録しました', focus: '担当', sound: '鐘と部屋の環境音', voice: '音声通知', diary: 'ペンバリーの日記 · 夕刻', diaryTitle: 'よく管理された一日', return: '領地へ戻る', another: '新しい一日を始める', diaryText: '西の窓から最後の光が消えました。あなたの記録は館の日記に大切に保管されました。', lastDiary: '最後の日記', diaryDate: '日付', diaryTasks: '完了した仕事', diaryReputation: '評判', openDiary: '日記を読む', morning: '朝の部屋を点検する', kitchen: '朝食の準備を確認する', garden: '菜園を見回る', arrival: '午後の来客に備える', housekeeping: '家事', guests: '来客', groundsFocus: '庭の管理', diaryComplete: '館は格別の優雅さをもって今日の務めを終えました。', diaryPartial: '館はその務めを保ちました。夕刻までに{complete}件の主な仕事を確認しました。', privateAccount: '— 執事の私的な記録', diaryHistory: '日記の履歴',
+    eyebrow: '領地運営シミュレーション', subtitle: '部屋にはそれぞれのリズムがあり、客人にはそれぞれの好みがあります。湖から最後の光が消える前に、館を整えましょう。', begin: '一日を始める', options: 'オプション', settings: '設定', language: '言語', close: '閉じる', save: '設定を保存', correspondence: '館の設定', languageHint: '帳簿、通知、日記で使う言語を選択します。', titleLine: '夜明けとともに、この館はあなたのものです。', season: '季節', weather: '天候', clock: '館の時計', grounds: 'ペンバリー領地', view: '執事の視点', move: '移動', run: '走る', adjust: '視点変更', interact: '調べる', desk: '執事の机', day: '1日目', order: '本日の予定', ring: '館の鐘を鳴らす', closeDay: '一日を閉じて日記を書く', household: '使用人', onDuty: '名が勤務中', staffRoutes: '使用人の巡回', reputation: 'エリザベスの好意', goodOrder: '上向き · 来訪者は好意的', eventLog: '出来事の記録', taskDone: '完了に記録しました', bellNotice: '館の鐘を鳴らしました · 15分経過', nothing: 'ここに必要な仕事はありません。東棟か南の庭へ向かいましょう。', noticeTask: '仕事を記録しました', focus: '担当', sound: '鐘と部屋の環境音', voice: '音声通知', diary: 'ペンバリーの日記 · 夕刻', diaryTitle: 'よく管理された一日', return: '領地へ戻る', another: '新しい一日を始める', diaryText: '西の窓から最後の光が消えました。あなたの記録は館の日記に大切に保管されました。', lastDiary: '最後の日記', diaryDate: '日付', diaryTasks: '完了した仕事', diaryReputation: '評判', openDiary: '日記を読む', morning: '朝の部屋を点検する', kitchen: '朝食の準備を確認する', garden: '菜園を見回る', arrival: '午後の来客に備える', housekeeping: '家事', guests: '来客', groundsFocus: '庭の管理', diaryComplete: '館は格別の優雅さをもって今日の務めを終えました。', diaryPartial: '館はその務めを保ちました。夕刻までに{complete}件の主な仕事を確認しました。', privateAccount: '— 執事の私的な記録', diaryHistory: '日記の履歴',
   },
   fr: {
     eyebrow: 'Jeu de gestion d’une maison', subtitle: 'Chaque pièce a son rythme, chaque invité ses préférences. Gardez la maison en ordre avant que la dernière lumière ne quitte le lac.', begin: 'Commencer la journée', options: 'Options', settings: 'Paramètres', language: 'Langue', close: 'Fermer', save: 'Enregistrer les paramètres', correspondence: 'Préférences de la maison', languageHint: 'Choisissez la langue de votre registre, des avis et du journal.', titleLine: 'À la première lueur, la maison vous appartient.', season: 'Saison', weather: 'Météo', clock: 'Horloge de la maison', grounds: 'Domaine de Pemberley', view: 'Vue de l’intendant', move: 'déplacer', run: 'courir', adjust: 'ajuster la vue', interact: 'interagir', desk: 'Bureau de l’intendant', day: 'Jour 01', order: 'Ordre du jour', ring: 'Sonner la cloche de la maison', closeDay: 'Clore la journée et écrire au journal', household: 'Maison', onDuty: 'en service', staffRoutes: 'Rondes du personnel', reputation: 'Réputation de la maison', goodOrder: 'Bon ordre · +2 depuis l’aube', eventLog: 'Journal des événements', taskDone: 'tâche accomplie', bellNotice: 'La cloche a sonné · 15 minutes ont passé', nothing: 'Rien ici ne requiert votre attention. Essayez l’aile est ou les jardins du sud.', noticeTask: 'Tâche enregistrée', focus: 'Affectation', sound: 'Sons ambiants de cloche et de pièces', voice: 'Avis parlés', diary: 'Le journal de Pemberley · soir', diaryTitle: 'Une journée bien menée', return: 'Retour au domaine', another: 'Commencer une autre journée', diaryText: 'La dernière lumière a quitté les fenêtres de l’ouest. Votre compte rendu a été placé en sécurité dans le journal de la maison.', lastDiary: 'Dernière entrée du journal', diaryDate: 'Date', diaryTasks: 'Tâches accomplies', diaryReputation: 'Réputation', openDiary: 'Lire le journal', morning: 'Inspecter les pièces du matin', kitchen: 'Confirmer le service du petit-déjeuner', garden: 'Inspecter le potager', arrival: 'Préparer la venue des visiteurs', housekeeping: 'Intendance', guests: 'Invités', groundsFocus: 'Domaine', diaryComplete: 'La maison a fonctionné avec une grâce rare aujourd’hui ; toutes les tâches ont été accomplies.', diaryPartial: 'La maison a suivi son cours. {complete} tâches principales sur {tasks} ont été vérifiées avant le soir.', privateAccount: '— Compte rendu privé de l’intendant', diaryHistory: 'Historique du journal',
@@ -140,18 +141,26 @@ function readDiaryEntries(): DiaryEntry[] {
     const entries = Array.isArray(parsed) ? parsed : [parsed];
     return entries.filter((entry): entry is DiaryEntry =>
       entry && typeof entry.date === 'string' && typeof entry.complete === 'number' && typeof entry.reputation === 'number'
-    ).map(entry => ({ date: entry.date, complete: entry.complete, reputation: entry.reputation, ...(typeof entry.day === 'number' ? { day: entry.day } : {}) }));
+    ).map(entry => ({
+      date: entry.date,
+      complete: entry.complete,
+      reputation: entry.reputation,
+      ...(typeof entry.day === 'number' ? { day: entry.day } : {}),
+      ...(entry.prose && typeof entry.prose.en === 'string' && typeof entry.prose.ja === 'string' ? { prose: { en: entry.prose.en, ja: entry.prose.ja } } : {}),
+    }));
   } catch {
     return [];
   }
 }
 
+// ペンバリーの奉公人。あなた（執事）の下で働く顔ぶれ。
+// Mrs. Reynolds は原作の家政婦で、来訪者を館内に案内し主人を誇らしげに語る。
 const staff: Staff[] = [
-  { id: 'mrs-bennet', name: 'Mrs. Bennet', role: 'Housekeeper', initials: 'MB', color: '#d8a56b', home: { x: -4, y: -1 }, focus: 'Morning rooms' },
-  { id: 'mr-reynolds', name: 'Mr. Reynolds', role: 'Land Steward', initials: 'MR', color: '#9fb8a5', home: { x: 5, y: 2 }, focus: 'South lawn' },
-  { id: 'lucy', name: 'Lucy Steele', role: 'Under-parlourmaid', initials: 'LS', color: '#c7846a', home: { x: -7, y: 5 }, focus: 'Housekeeping' },
-  { id: 'william', name: 'William Collins', role: 'Footman', initials: 'WC', color: '#b8a77e', home: { x: 2, y: -5 }, focus: 'Receiving guests' },
-  { id: 'mrs-gardiner', name: 'Mrs. Gardiner', role: 'Head gardener', initials: 'MG', color: '#83a989', home: { x: 9, y: 6 }, focus: 'Kitchen garden' },
+  { id: 'mrs-reynolds', name: 'Mrs. Reynolds', role: 'Housekeeper', initials: 'MR', color: '#d8a56b', home: { x: -4, y: -1 }, focus: 'Portrait gallery' },
+  { id: 'john', name: 'John', role: 'First footman', initials: 'JN', color: '#b8a77e', home: { x: 2, y: -5 }, focus: 'Front hall' },
+  { id: 'sarah', name: 'Sarah', role: 'Housemaid', initials: 'SA', color: '#c7846a', home: { x: -7, y: 5 }, focus: 'Music room' },
+  { id: 'mr-adams', name: 'Mr. Adams', role: 'Head gardener', initials: 'AD', color: '#83a989', home: { x: 9, y: 6 }, focus: 'The grounds' },
+  { id: 'thomas', name: 'Thomas', role: 'Groom', initials: 'TH', color: '#9fb8a5', home: { x: 5, y: 2 }, focus: 'Stables' },
 ];
 
 const initialLogs = [
@@ -251,7 +260,7 @@ const emergencyCopy: Record<Language, {
     urgent: 'Urgent', high: 'High', watch: 'Watch',
     spill: 'A spill needs immediate attention.', guest_arrival: 'An unannounced guest is waiting at the hall.',
     sick: 'A member of staff has fallen ill.', dog: 'A loose hound is making trouble.', dinner_rush: 'Dinner service is falling behind.',
-    escalated: 'The situation has worsened.', reputation: 'Reputation', duties: 'Ledger duties',
+    escalated: 'The situation has worsened.', reputation: 'Good opinion', duties: 'Ledger duties',
   },
   ja: {
     emergencies: '緊急の出来事', calm: '館は穏やかです。', timeLeft: '分', resolve: '解決', dispatch: '派遣',
@@ -259,7 +268,7 @@ const emergencyCopy: Record<Language, {
     urgent: '緊急', high: '高', watch: '注意',
     spill: 'こぼれたものをすぐに片付ける必要があります。', guest_arrival: '予告のない客人が玄関で待っています。',
     sick: '使用人が具合を悪くしました。', dog: '逃げた猟犬が騒ぎを起こしています。', dinner_rush: '夕食の支度が遅れています。',
-    escalated: '事態が悪化しました。', reputation: '評判', duties: '帳簿の仕事',
+    escalated: '事態が悪化しました。', reputation: '好意', duties: '帳簿の仕事',
   },
   fr: {
     emergencies: 'Événements urgents', calm: 'La maison est calme.', timeLeft: 'min restantes', resolve: 'Résoudre', dispatch: 'Envoyer',
@@ -561,9 +570,11 @@ function DiaryModal({ entry, language, taskCount, onReset, onClose, triggerRef, 
   const t = (key: string) => translations[language][key] || translations.en[key] || key;
   const copy = emergencyCopy[language];
   const firstHistoryEntryRef = useRef<HTMLButtonElement>(null);
-  const account = entry.complete === taskCount
-    ? t('diaryComplete')
-    : t('diaryPartial').replace('{complete}', String(entry.complete)).replace('{tasks}', String(taskCount));
+  const account = entry.prose
+    ? (language === 'ja' ? entry.prose.ja : entry.prose.en)
+    : entry.complete === taskCount
+      ? t('diaryComplete')
+      : t('diaryPartial').replace('{complete}', String(entry.complete)).replace('{tasks}', String(taskCount));
   return <Dialog open triggerRef={triggerRef} onClose={onClose} className="diary-modal" label={t('diaryTitle')}>
     <div className="eyebrow" style={{ color: '#a36b48' }}>{t('diary')}</div><h2 id="diary-title">{t('diaryTitle')}</h2><p>{t('diaryText')}</p>{entries && entries.length > 1 && <div className="diary-history" aria-label={t('diaryHistory')}>{entries.slice().reverse().map((savedEntry, index) => <button ref={index === 0 ? firstHistoryEntryRef : undefined} key={`${savedEntry.date}-${savedEntry.day ?? index}`} className={`diary-history-item ${savedEntry === entry ? 'active' : ''}`} onClick={() => onSelectEntry?.(savedEntry)}><span>{savedEntry.date}</span><small>{savedEntry.complete}/{taskCount} · {t('reputation')} {savedEntry.reputation}</small></button>)}</div>}<div className="diary-entry">“{account}”<br /><span style={{ color: '#9c795e', fontSize: 10 }}>{t('privateAccount')}</span></div><div className="diary-stats"><span><Sparkles size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{t('reputation')} {entry.reputation}</span><span><BookOpen size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{entry.complete}/{taskCount}</span></div><div className="modal-actions"><button onClick={onReset}><RotateCcw size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('another')}</button><button className="primary" onClick={onClose}>{t('return')}</button></div>
   </Dialog>;
@@ -719,10 +730,10 @@ function App() {
       return;
     }
     const events: Array<{ id: string; at: number; shouldFire?: boolean; message: BilingualMessage; tone: EventTone }> = [
-      { id: 'morning-report', at: 9 * 60 + 30, message: { en: 'Mrs. Bennet reports: the morning rooms are ready, but the east corridor still wants attention.', ja: 'ベネット夫人の報告です。朝の部屋は整いましたが、東廊下にはまだ手入れが必要です。' }, tone: 'report' },
-      { id: 'catherine-arrival', at: 13 * 60, message: { en: 'Lady Catherine has arrived at the front hall. Her party expects the house to be in perfect order.', ja: 'キャサリン夫人が玄関ホールに到着しました。一行は館が完璧に整っていることを望んでいます。' }, tone: 'arrival' },
-      { id: 'catherine-warning', at: 13 * 60 + 30, shouldFire: reputation < 78 || completed.length < 2, message: { en: 'A pointed note from Lady Catherine: she has observed a delay in the household arrangements.', ja: 'キャサリン夫人から厳しい伝言です。館の手配に遅れがあるとのことです。' }, tone: 'warning' },
-      { id: 'evening-report', at: 15 * 60 + 30, message: { en: 'Mr. Reynolds reports: the lake path is secure and the staff are returning to their evening routes.', ja: 'レイノルズ氏の報告です。湖畔の道は安全で、使用人たちは夕刻の巡回へ戻っています。' }, tone: 'report' },
+      { id: 'morning-report', at: 9 * 60 + 30, message: { en: 'Mrs. Reynolds reports: the portrait gallery is ready to be shown, but the music room still wants attention.', ja: 'レイノルズ夫人の報告です。肖像画の間はご案内できますが、音楽室にはまだ手入れが必要です。' }, tone: 'report' },
+      { id: 'gardiners-arrival', at: 13 * 60, message: { en: 'A travelling party has asked at the door whether the house may be seen. Mrs. Reynolds is ready to lead them through.', ja: '旅の一行が、館を拝見できるかと戸口で尋ねています。レイノルズ夫人が館内をご案内する用意をしています。' }, tone: 'arrival' },
+      { id: 'elizabeth-observes', at: 13 * 60 + 30, shouldFire: reputation < 78 || completed.length < 2, message: { en: 'One of the visitors—a young lady from Hertfordshire—lets her eye rest a moment too long on a room not quite in order.', ja: '来訪者のひとり——ハートフォードシャーの若い令嬢——が、十分に整っていない部屋にわずかに長く視線をとどめました。' }, tone: 'warning' },
+      { id: 'evening-report', at: 15 * 60 + 30, message: { en: 'Thomas reports: the visitors have walked down to the lake, and the grounds are showing at their best.', ja: 'トマスの報告です。来訪者たちは湖へ下りていき、庭園は最も美しい姿を見せています。' }, tone: 'report' },
     ];
     events.forEach(event => {
       if (minutes >= event.at && !firedEventsRef.current.has(event.id) && event.shouldFire !== false) {
@@ -879,7 +890,17 @@ function App() {
     speak(nearby.text, tts, language, voiceRate);
   };
   const finishDay = () => {
-    const entry = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), complete: completed.length, reputation, day: dayNumber };
+    const prose = composeDiary({
+      dayNumber,
+      weatherEn: weather.en,
+      weatherJa: weather.ja,
+      completed: completed.length,
+      taskCount: tasks.length,
+      reputation,
+      guestMood: guestStates[0]?.mood ?? 82,
+      pianoPlayed: pianoScore > 0,
+    });
+    const entry = { date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), complete: completed.length, reputation, day: dayNumber, prose };
     const nextEntries = [...diaryEntries, entry];
     localStorage.setItem('pemberley-diary', JSON.stringify(nextEntries));
     setDiaryEntries(nextEntries);
