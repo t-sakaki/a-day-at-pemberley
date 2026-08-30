@@ -1381,3 +1381,41 @@ test('renders when Web Audio and speech APIs are unavailable', async ({ page, is
   await page.getByRole('button', { name: 'C', exact: true }).click();
   await expect(page.locator('.piano-score')).toContainText(/Notes played: 1|演奏した音符: 1/);
 });
+
+test('answers the morning post and applies the day’s constraints', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'The morning-post flow uses the desktop steward’s desk.');
+  await page.clock.install();
+  await page.addInitScript(() => localStorage.setItem('pemberley-language', 'en'));
+  await page.goto('/');
+  await pauseTestClock(page);
+  await page.getByRole('button', { name: 'Begin the day' }).evaluate(button => (button as HTMLButtonElement).click());
+
+  const opener = page.getByRole('button', { name: /The morning post/ });
+  await expect(opener).toContainText('0/3');
+  await opener.evaluate(button => (button as HTMLButtonElement).click());
+
+  const dialog = page.getByRole('dialog', { name: 'The morning post' });
+  await expect(dialog).toBeVisible();
+  const cards = dialog.locator('.letter-card');
+  await expect(cards).toHaveCount(3);
+
+  // Mr. Darcy: prioritise the music room.
+  await cards.nth(0).getByRole('button', { name: 'See first to Miss Darcy’s music room' }).click();
+  await expect(cards.nth(0).locator('.letter-note')).toContainText('Sarah is set to the music room');
+  await expect(cards.nth(0).getByRole('button', { name: 'See first to the rooms the visitors pass' })).toBeDisabled();
+
+  await cards.nth(1).getByRole('button', { name: 'Let it wait until the visitors have gone' }).click();
+  await cards.nth(2).getByRole('button', { name: 'Comply. Send Mr. Adams to Rosings' }).click();
+
+  await dialog.getByRole('button', { name: 'Begin the day’s work' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(opener).toContainText('3/3');
+
+  await expect(page.locator('.log li').filter({ hasText: 'Mr. Adams is sent to Rosings' })).toHaveCount(1);
+  // The Darcy choice biased the music room upward past its initial 54%
+  // and above the picture gallery, which received no letter bias.
+  const musicValue = page.locator('.tour-room').filter({ hasText: 'The music room' }).locator('.mono');
+  const galleryValue = page.locator('.tour-room').filter({ hasText: 'The picture gallery' }).locator('.mono');
+  await expect(musicValue).toHaveText('68%');
+  await expect(galleryValue).toHaveText('62%');
+});
