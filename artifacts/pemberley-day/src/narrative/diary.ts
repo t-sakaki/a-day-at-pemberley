@@ -10,6 +10,7 @@ export type DiaryInput = {
   reputation: number;
   guestMood: number;
   pianoPlayed: boolean;
+  tourImpression?: number; // 見学順路で一行が抱いた印象 0-100（Phase 1 のセーブには無い）
 };
 
 export type DiaryProse = { en: string; ja: string };
@@ -78,12 +79,33 @@ function pianoClause(input: DiaryInput): DiaryProse {
   };
 }
 
+function tourClause(input: DiaryInput): DiaryProse {
+  if (input.tourImpression === undefined) return { en: '', ja: '' };
+  if (input.tourImpression >= 78) {
+    return {
+      en: ' Room by room the visitors were led through, and the house bore the looking-at; the gallery, the music room, and the great window each did their office.',
+      ja: ' 一行は部屋から部屋へと案内されたが、館はその視線によく耐えた。肖像画の間も、音楽室も、あの大窓も、それぞれの務めを果たした。',
+    };
+  }
+  if (input.tourImpression >= 52) {
+    return {
+      en: ' The visitors were led through room by room, and if one or two wanted a little more care, the prospect from the window made amends for them.',
+      ja: ' 一行は部屋から部屋へと案内された。ひとつふたつはもう少し手をかけたかったが、窓からの眺めがその埋め合わせをした。',
+    };
+  }
+  return {
+    en: ' The tour of the rooms did the house no great service; more than one was shown before it was ready to be seen.',
+    ja: ' 部屋を巡る案内は館のためにはならなかった。見せる支度の整わぬうちに通された部屋がいくつもあった。',
+  };
+}
+
 export function composeDiary(input: DiaryInput): DiaryProse {
   const duties = dutiesClause(input);
   const opinion = esteemClause(input);
+  const tour = tourClause(input);
   const piano = pianoClause(input);
   return {
-    en: `The day came in with ${input.weatherEn.toLowerCase()}, and the house was awake before it. ${duties.en} ${opinion.en}${piano.en} The last light went from the west windows at the usual hour.`,
-    ja: `その日は${input.weatherJa}とともに明け、館はそれより先に目を覚ましていた。${duties.ja}${opinion.ja}${piano.ja} 西の窓から最後の光が消えたのは、いつもの時刻だった。`,
+    en: `The day came in with ${input.weatherEn.toLowerCase()}, and the house was awake before it. ${duties.en} ${opinion.en}${tour.en}${piano.en} The last light went from the west windows at the usual hour.`,
+    ja: `その日は${input.weatherJa}とともに明け、館はそれより先に目を覚ましていた。${duties.ja}${opinion.ja}${tour.ja}${piano.ja} 西の窓から最後の光が消えたのは、いつもの時刻だった。`,
   };
 }
