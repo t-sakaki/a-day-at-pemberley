@@ -41,6 +41,19 @@ const voiceModel: Record<Lang, string | undefined> = {
 // piper の話速。数値が大きいほどゆっくり。落ち着いた語りにする。
 const lengthScale: Record<Lang, string> = { en: '1.06', ja: '1.04' };
 
+// OpenJTalk が誤読する語を、合成に渡すテキストだけ差し替える（画面の表示テキストは変えない）。
+// 新しい誤読が見つかったらここに足す。
+const JA_READING_FIXES: Array<[RegExp, string]> = [
+  [/館(?!内)/g, 'やかた'], // 「館」は やかた。「館内(かんない)」だけは残す
+  [/肖像画の間/g, '肖像画のま'], // 「間」は ま。放置すると「あいだ」
+  [/舟小屋/g, 'ふなごや'],
+];
+
+function forSpeech(text: string, lang: Lang): string {
+  if (lang !== 'ja') return text;
+  return JA_READING_FIXES.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text);
+}
+
 function have(bin: string): boolean {
   try {
     execFileSync('sh', ['-c', `command -v ${bin}`], { stdio: 'ignore' });
@@ -75,7 +88,8 @@ try {
   for (const [id, line] of Object.entries(voiceLines)) {
     for (const lang of LANGS) {
       const text = line[lang].trim();
-      const hash = createHash('sha1').update(`${lengthScale[lang]}::${text}`).digest('hex').slice(0, 12);
+      const speechText = forSpeech(text, lang);
+      const hash = createHash('sha1').update(`${lengthScale[lang]}::${speechText}`).digest('hex').slice(0, 12);
       const outPath = join(voDir, lang, `${id}.mp3`);
       if (manifest[id]?.[lang] === hash && existsSync(outPath)) {
         skipped += 1;
@@ -84,7 +98,7 @@ try {
 
       const wav = join(tmp, `${id}.${lang}.wav`);
       execFileSync('piper', ['-m', voiceModel[lang] as string, '-f', wav, '--length-scale', lengthScale[lang]], {
-        input: text,
+        input: speechText,
         stdio: ['pipe', 'ignore', 'inherit'],
       });
 
