@@ -4,7 +4,9 @@ export type LocalizedText = { en: string; ja: string; fr: string; de: string; es
 export type GuestTemplate = {
   id: string;
   name: string;
+  nameJa: string;
   title: string;
+  titleJa: string;
   color: string;
   preferences: GuestPreference[];
   arrivalLine: LocalizedText;
@@ -17,7 +19,9 @@ export const guests: GuestTemplate[] = [
   {
     id: 'the-gardiners',
     name: 'Mr. & Mrs. Gardiner',
+    nameJa: 'ガーディナー夫妻',
     title: 'A travelling party from Gracechurch Street',
+    titleJa: 'グレイスチャーチ街からの旅の一行',
     color: '#9fb8a5',
     preferences: ['garden', 'portraits', 'quiet'],
     arrivalLine: {
@@ -40,7 +44,9 @@ export const guests: GuestTemplate[] = [
   {
     id: 'elizabeth-bennet',
     name: 'Miss Elizabeth Bennet',
+    nameJa: 'エリザベス・ベネット嬢',
     title: 'A visitor from Hertfordshire',
+    titleJa: 'ハートフォードシャーからの来訪者',
     color: '#c98b6a',
     preferences: ['portraits', 'garden', 'perfect order'],
     arrivalLine: {

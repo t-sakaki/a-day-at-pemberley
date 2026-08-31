@@ -689,7 +689,7 @@ test('resolves the morning spill nearby in English and Japanese on desktop and m
 
     const localized = language === 'en'
       ? { heading: 'Urgent events', resolve: 'Resolve', dispatch: 'Dispatch', staff: 'Mrs. Reynolds', assigned: 'Assigned' }
-      : { heading: '緊急の出来事', resolve: '解決', dispatch: '派遣', staff: 'Mrs. Reynolds', assigned: '担当' };
+      : { heading: '緊急の出来事', resolve: '解決', dispatch: '派遣', staff: 'レイノルズ夫人', assigned: '担当' };
     const eventCard = page.locator('.emergency-card').first();
     await expect(page.getByText(localized.heading, { exact: false })).toBeVisible();
     await expect(eventCard).toContainText(localized.resolve);
