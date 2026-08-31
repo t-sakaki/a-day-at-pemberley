@@ -165,7 +165,8 @@ const staff: Staff[] = [
   { id: 'thomas', name: 'Thomas', role: 'Groom', initials: 'TH', color: '#9fb8a5', home: { x: 5, y: 2 }, focus: 'Stables' },
 ];
 
-const initialLogs = [
+type LogEntry = { time: string; text: string; voiceId?: string };
+const initialLogs: LogEntry[] = [
   { time: '07:35', text: 'The west bell has called the household to order.' },
   { time: '07:22', text: 'A fine mist rests upon the lake. Roads remain passable.' },
   { time: '06:58', text: 'Kitchen fire lit. Breakfast service is under way.' },
@@ -693,8 +694,8 @@ function App() {
   const nearbyRoom = useMemo(() => tourRooms.find(room => Math.hypot(room.point.x - player.x, room.point.y - player.y) < 3) || null, [player]);
   const tourLiveRef = useRef({ focuses, emergencies, absentStaff });
   tourLiveRef.current = { focuses, emergencies, absentStaff };
-  const addLog = useCallback((text: string) => {
-    setLogs(current => [{ time: formatTime(minutes), text }, ...current].slice(0, 7));
+  const addLog = useCallback((text: string, voiceId?: string) => {
+    setLogs(current => [{ time: formatTime(minutes), text, voiceId }, ...current].slice(0, 7));
   }, [minutes]);
   const notify = useCallback((text: string) => {
     setNotice(text);
@@ -732,7 +733,7 @@ function App() {
   // voiceId があれば事前生成の MP3 を、なければ従来の Web Speech で読み上げる。
   const announce = useCallback((message: BilingualMessage | LocalizedText, tone: EventTone, voiceId?: string) => {
     const text = localized(message as LocalizedText, language);
-    addLog(text);
+    addLog(text, voiceId);
     notify(text);
     if (voiceId) voiceRef.current?.play(voiceId, language);
     else speak(text, tts, language, voiceRate, tone === 'warning' ? 1.12 : 1);
@@ -783,12 +784,11 @@ function App() {
       const shouldSpawnArrival = !emergencySpawnedRef.current.has('guest_arrival');
       if (shouldSpawnArrival) {
         emergencySpawnedRef.current.add('guest_arrival');
+        // 来客の到着は必ず読み上げ・記録する。緊急枠が埋まっていても案内自体は起きる。
+        setGuestStates(guestManagerRef.current.arrive());
+        const guest = guestManagerRef.current.current[0];
+        if (guest) announce(guest.arrivalLine, 'arrival', `guest-${guest.id}-arrival`);
         system.spawn('guest_arrival', minutes);
-        if (system.active.some(event => event.type === 'guest_arrival')) {
-          setGuestStates(guestManagerRef.current.arrive());
-          const guest = guestManagerRef.current.current[0];
-          if (guest) announce(guest.arrivalLine, 'arrival', `guest-${guest.id}-arrival`);
-        }
       }
     }
     const next = system.advance(minutes);
@@ -841,7 +841,7 @@ function App() {
     if (modifier.staffMorale) setStaffMorale(value => Math.max(0, Math.min(100, value + modifier.staffMorale!)));
     if (modifier.absentStaffId) setAbsentStaff(current => current.includes(modifier.absentStaffId!) ? current : [...current, modifier.absentStaffId!]);
     const note = localized(modifier.note, language);
-    addLog(note);
+    addLog(note, `letter-${letterId}-${optionIndex}`);
     notify(note);
     voiceRef.current?.play(`letter-${letterId}-${optionIndex}`, language);
     audioRef.current?.eventTone('report');
@@ -964,7 +964,7 @@ function App() {
   const ringBell = () => {
     setMinutes(value => Math.min(value + 15, 17 * 60 + 30));
     setReputation(value => Math.min(100, value + 1));
-    addLog('The west bell rings clearly across the grounds. Staff adjust their routes.');
+    addLog('The west bell rings clearly across the grounds. Staff adjust their routes.', 'bell-rung');
     notify('The household bell has been rung · 15 minutes advanced');
     voiceRef.current?.play('bell-rung', language);
     audioRef.current?.ringBell();
@@ -1093,10 +1093,13 @@ function App() {
            <div className="reputation"><div className="rep-ring"><b>{reputation}</b></div><div><strong>{t('reputation')}</strong><small>{t('goodOrder')}</small></div></div>
            <div className="section-label">{t('staffRoutes')}</div>
             <div className="status-meters"><div><span>{copy.guestMood}</span><b>{guestStates[0]?.mood ?? 82}%</b></div><div><span>{copy.staffMorale}</span><b>{staffMorale}%</b></div></div>
-            {guestStates.map(guest => <div className="guest-card" key={guest.id}><div><strong>{guest.name}</strong><small>{guest.title}</small></div><b>{guest.mood}%</b><p>“{localized(guest.line, language)}”</p><small>{copy.preferences}: {guest.preferences.join(' · ')}</small></div>)}
+            {guestStates.map(guest => {
+              const voiceId = `guest-${guest.id}-${guest.line === guest.complaintLine ? 'complaint' : 'arrival'}`;
+              return <div className="guest-card" key={guest.id}><div><strong>{guest.name}</strong><small>{guest.title}</small></div><b>{guest.mood}%</b><p>“{localized(guest.line, language)}”<button type="button" className="line-replay" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(voiceId, language)}><Volume2 size={12} /></button></p><small>{copy.preferences}: {guest.preferences.join(' · ')}</small></div>;
+            })}
             {staff.map(person => <div key={person.id} className={`staff-card ${selectedStaff === person.id ? 'selected' : ''}`} onClick={() => setSelectedStaff(person.id)}><div className="staff-row"><div className="avatar" style={{ background: person.color }}>{person.initials}</div><div><strong>{person.name}</strong><small>{person.role}</small></div><i className="status-dot" /></div>{selectedStaff === person.id && <div className="focus-row">{emergencies.slice(0, 3).map(event => <button key={event.id} className="focus-btn" onClick={(clickEvent) => { clickEvent.stopPropagation(); dispatchStaff(event, person); }}>{copy.dispatch} · {localized(event.location, language)}</button>)}{!emergencies.length && tourRooms.map(room => <button key={room.id} className={`focus-btn ${focuses[person.id] === room.focus ? 'active' : ''}`} onClick={(event) => { event.stopPropagation(); setFocuses(current => ({ ...current, [person.id]: room.focus })); notify(`${person.name} · ${localized(room.name, language)}`); }}>{localized(room.name, language)}</button>)}</div>}</div>)}
            <div className="section-label">{t('eventLog')}</div>
-          <ul className="log">{logs.map((item, i) => <li key={`${item.time}-${i}`}><time>{item.time}</time>{item.text}</li>)}</ul>
+          <ul className="log">{logs.map((item, i) => <li key={`${item.time}-${i}`}><time>{item.time}</time><span>{item.text}</span>{item.voiceId && <button type="button" className="line-replay" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(item.voiceId as string, language)}><Volume2 size={12} /></button>}</li>)}</ul>
           <div style={{ color: '#87a095', fontSize: 10, marginTop: 16, lineHeight: 1.6 }}><Wind size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Wind from the west · lake path is slick</div>
         </aside>
       </div>
