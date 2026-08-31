@@ -1,4 +1,5 @@
 // 変更概要: 外部音源に依存しない、時間帯・天候・位置連動の環境音を管理する。
+import { strikeBell, createBellReverb } from './bell';
 
 export type AudioScene = {
   minutes: number;
@@ -16,6 +17,8 @@ export class AudioManager {
   private ambience: GainNode | null = null;
   private enabled = true;
   private pianoTimer = 0;
+  private bellBus: GainNode | null = null;
+  private lastChimeAt = -100;
 
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
@@ -76,11 +79,42 @@ export class AudioManager {
     if (Math.random() < 0.012) this.chime(hour, nearHouse);
   }
 
+  // 鐘専用チェーン：ドライ＋石造りの残響を master へ送る。初回に一度だけ組む。
+  private ensureBellChain(): GainNode | null {
+    if (!this.context || !this.master) return null;
+    if (this.bellBus) return this.bellBus;
+    const bus = this.context.createGain();
+    // master が控えめ(0.16)なので鐘は前景イベントとして少し持ち上げる。
+    bus.gain.value = 1.3;
+    // 真鍮のような温かみと、飽和による穏やかなピーク抑制（tanh ソフトクリップ）。
+    const shaper = this.context.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < curve.length; i += 1) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.tanh(x * 1.7);
+    }
+    shaper.curve = curve;
+    shaper.oversample = '2x';
+    const dry = this.context.createGain();
+    dry.gain.value = 0.82;
+    const reverb = createBellReverb(this.context, 2.8);
+    const wet = this.context.createGain();
+    wet.gain.value = 0.5;
+    bus.connect(shaper);
+    shaper.connect(dry).connect(this.master);
+    shaper.connect(reverb).connect(wet).connect(this.master);
+    this.bellBus = bus;
+    return bus;
+  }
+
+  // 館の鐘：教会の鐘のように二度撞く。二撞き目はやや弱く、余韻を残す。
   ringBell() {
     this.start();
-    if (!this.context || !this.master) return;
-    this.tone(392, 0.38, 0.1);
-    window.setTimeout(() => this.tone(523, 0.46, 0.07), 120);
+    const bus = this.ensureBellChain();
+    if (!this.context || !bus) return;
+    const now = this.context.currentTime;
+    strikeBell(this.context, bus, { strikeHz: 247, when: now, level: 0.5, brightness: 0.9 });
+    strikeBell(this.context, bus, { strikeHz: 247, when: now + 1.45, level: 0.36, brightness: 0.82 });
   }
 
   eventTone(kind: EventTone) {
@@ -126,6 +160,8 @@ export class AudioManager {
     this.ambience = null;
     this.wind = null;
     this.river = null;
+    this.bellBus = null;
+    this.lastChimeAt = -100;
   }
 
   private tone(frequency: number, duration: number, volume: number) {
@@ -142,10 +178,21 @@ export class AudioManager {
     oscillator.stop(this.context.currentTime + duration);
   }
 
+  // 丘の向こうの教会の鐘。遠く、鈍く、控えめに。撞く間隔は最低20秒あける。
   private chime(hour: number, nearHouse: number) {
-    if (hour >= 6 && hour < 9) this.tone(880, 0.1, 0.025);
-    else if (hour >= 17 || hour < 6) this.tone(220, 0.18, 0.018);
-    else if (nearHouse > 0.4) this.tone(196, 0.06, 0.015);
+    if (!this.context) return;
+    const now = this.context.currentTime;
+    if (now - this.lastChimeAt < 20) return;
+    const bus = this.ensureBellChain();
+    if (!bus) return;
+    this.lastChimeAt = now;
+    // 夕刻ほど低く、日中は少し明るく。近くにいると心もち大きく。
+    // 館の鐘と同じく二度撞き（遠くの教会が谷向こうで鳴っている風情）。
+    const evening = hour >= 17 || hour < 7;
+    const strikeHz = evening ? 208 : 233;
+    const level = 0.09 + nearHouse * 0.05;
+    strikeBell(this.context, bus, { strikeHz, when: now, level, brightness: 0.28 });
+    strikeBell(this.context, bus, { strikeHz, when: now + 1.6, level: level * 0.78, brightness: 0.26 });
   }
 }
 
