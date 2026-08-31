@@ -223,11 +223,33 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
 
   if (fig.label) {
     ctx.save();
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = '#efe3c8';
-    ctx.font = `${Math.round(s * 0.34)}px "Libre Baskerville", Georgia, serif`;
+    const fs = Math.max(Math.round(s * 0.32), 11);
+    ctx.font = `${fs}px "Libre Baskerville", Georgia, serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(fig.label, x, y - s * 1.35);
+    ctx.textBaseline = 'middle';
+    const ty = y - s * 1.4;
+    const tw = ctx.measureText(fig.label).width;
+    const padX = fs * 0.6;
+    const padY = fs * 0.34;
+    const bw = tw + padX * 2;
+    const bh = fs + padY * 2;
+    const bx = x - bw / 2;
+    const by = ty - bh / 2;
+    const r = bh / 2;
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+    ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+    ctx.arcTo(bx, by + bh, bx, by, r);
+    ctx.arcTo(bx, by, bx + bw, by, r);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(24,34,28,0.66)';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(242,232,210,0.28)';
+    ctx.stroke();
+    ctx.fillStyle = '#f5ecd6';
+    ctx.fillText(fig.label, x, ty);
     ctx.restore();
   }
 }
