@@ -1,0 +1,186 @@
+{
+  "title-line": {
+    "en": "c0849f2f84f4",
+    "ja": "121ab0928f33"
+  },
+  "day-start": {
+    "en": "7a94ed5cab09",
+    "ja": "ba94ecb4f0c9"
+  },
+  "morning-post": {
+    "en": "d8aeed6b246a",
+    "ja": "f46b5b5cea89"
+  },
+  "bell-rung": {
+    "en": "7ac43a44447f",
+    "ja": "db71b1446d1d"
+  },
+  "morning-report": {
+    "en": "673b326ce513",
+    "ja": "d341e40d3a4f"
+  },
+  "gardiners-arrival": {
+    "en": "fba90eb59ac1",
+    "ja": "83070915f5ef"
+  },
+  "elizabeth-observes": {
+    "en": "2f7d5c18f704",
+    "ja": "50f1a2f2fc3b"
+  },
+  "evening-report": {
+    "en": "8f4c331b1d26",
+    "ja": "e0faf2a557b1"
+  },
+  "letter-darcy-from": {
+    "en": "a03b72996b36",
+    "ja": "20e436af16a9"
+  },
+  "letter-darcy": {
+    "en": "b881f5723071",
+    "ja": "2511ee00285b"
+  },
+  "letter-darcy-0": {
+    "en": "cba32e4b2b0b",
+    "ja": "001bfd2a1333"
+  },
+  "letter-darcy-1": {
+    "en": "4b24f3c542de",
+    "ja": "8fd4186c0ea3"
+  },
+  "letter-poulterer-from": {
+    "en": "5a6eaee1dfdd",
+    "ja": "1bcb60403fac"
+  },
+  "letter-poulterer": {
+    "en": "a4b57a270204",
+    "ja": "60b0025225d8"
+  },
+  "letter-poulterer-0": {
+    "en": "efb8c3c8a646",
+    "ja": "b55b00f09b82"
+  },
+  "letter-poulterer-1": {
+    "en": "2bb2f618749d",
+    "ja": "22458ec1958d"
+  },
+  "letter-lady-catherine-from": {
+    "en": "ea7d411a9f36",
+    "ja": "0ff7eaa63adf"
+  },
+  "letter-lady-catherine": {
+    "en": "14ff75a29461",
+    "ja": "f26d76556399"
+  },
+  "letter-lady-catherine-0": {
+    "en": "b879eb280f51",
+    "ja": "87029abc5424"
+  },
+  "letter-lady-catherine-1": {
+    "en": "6e30c58a3dd3",
+    "ja": "06907d2e7e28"
+  },
+  "guest-the-gardiners-arrival": {
+    "en": "0fdba2fad55a",
+    "ja": "4685b98063cc"
+  },
+  "guest-the-gardiners-complaint": {
+    "en": "7a7aa45c0ed0",
+    "ja": "8385b5b9b1b2"
+  },
+  "guest-elizabeth-bennet-arrival": {
+    "en": "f38148de7bbd",
+    "ja": "99f9f06d4df9"
+  },
+  "guest-elizabeth-bennet-complaint": {
+    "en": "96d41e022e9e",
+    "ja": "a2b03ecf6c23"
+  },
+  "emergency-spill": {
+    "en": "1dae41e5a6dd",
+    "ja": "60a04dca1a2b"
+  },
+  "emergency-spill-escalated": {
+    "en": "33b83906d255",
+    "ja": "9b0b7d297309"
+  },
+  "emergency-guest_arrival": {
+    "en": "e8a2dc76266b",
+    "ja": "706370e1dc0f"
+  },
+  "emergency-guest_arrival-escalated": {
+    "en": "8ec6e6c508e8",
+    "ja": "fe35ec6f89ac"
+  },
+  "emergency-sick": {
+    "en": "96cf8d4da0c1",
+    "ja": "6b3cddbf868e"
+  },
+  "emergency-sick-escalated": {
+    "en": "c76e25456751",
+    "ja": "7a8521ab7895"
+  },
+  "emergency-dog": {
+    "en": "ba248cd5a3ca",
+    "ja": "683b1640d07d"
+  },
+  "emergency-dog-escalated": {
+    "en": "4ab79c00bd86",
+    "ja": "aed889ec494e"
+  },
+  "emergency-dinner_rush": {
+    "en": "2caa06eed48f",
+    "ja": "9cb611b21dde"
+  },
+  "emergency-dinner_rush-escalated": {
+    "en": "18c3899e90d5",
+    "ja": "05d1fa7b4abf"
+  },
+  "tour-gallery-warm": {
+    "en": "777d58e63653",
+    "ja": "528e13df4fb4"
+  },
+  "tour-gallery-civil": {
+    "en": "3e3c5a1165b0",
+    "ja": "b376349e79ba"
+  },
+  "tour-gallery-wanting": {
+    "en": "7d12cdbfc93d",
+    "ja": "0802c66446c2"
+  },
+  "tour-music-warm": {
+    "en": "52a40fc13889",
+    "ja": "b696a977b419"
+  },
+  "tour-music-civil": {
+    "en": "d0d58357ab7d",
+    "ja": "a50d629fab40"
+  },
+  "tour-music-wanting": {
+    "en": "c160b94381a1",
+    "ja": "a89fb7c2f90c"
+  },
+  "tour-window-warm": {
+    "en": "077dc93203ea",
+    "ja": "bd9e88862aae"
+  },
+  "tour-window-civil": {
+    "en": "a0e58fc5c4a7",
+    "ja": "bc02880c9cbe"
+  },
+  "tour-window-wanting": {
+    "en": "e72b0531b3ea",
+    "ja": "d14c8d4a01c0"
+  },
+  "tour-grounds-warm": {
+    "en": "9a52cca28758",
+    "ja": "684c48c99c7e"
+  },
+  "tour-grounds-civil": {
+    "en": "d11e8111933b",
+    "ja": "f2d9e9f26113"
+  },
+  "tour-grounds-wanting": {
+    "en": "0f8a1533be8d",
+    "ja": "1aa9c77e597e"
+  }
+}

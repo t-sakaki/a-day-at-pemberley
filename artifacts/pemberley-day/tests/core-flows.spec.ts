@@ -1419,3 +1419,20 @@ test('answers the morning post and applies the day’s constraints', async ({ pa
   await expect(musicValue).toHaveText('68%');
   await expect(galleryValue).toHaveText('62%');
 });
+
+test('plays a pre-generated narration clip on beginning the day and ringing the bell', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'The narration check uses the desktop task panel.');
+  const voRequests: string[] = [];
+  page.on('request', request => {
+    const url = request.url();
+    if (url.includes('/vo/')) voRequests.push(url.split('/vo/')[1]);
+  });
+  await page.addInitScript(() => localStorage.setItem('pemberley-language', 'en'));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Begin the day' }).click();
+  await expect.poll(() => voRequests).toContain('en/day-start.mp3');
+
+  await page.getByRole('button', { name: 'Open task panel' }).evaluate(button => (button as HTMLButtonElement).click());
+  await page.locator('.bell-button').click();
+  await expect.poll(() => voRequests).toContain('en/bell-rung.mp3');
+});

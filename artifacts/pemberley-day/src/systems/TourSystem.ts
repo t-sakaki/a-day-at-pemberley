@@ -44,7 +44,7 @@ export const tourRooms: TourRoom[] = [
 
 export type TourObservation = { roomId: TourRoomId; band: ObservationBand; line: LocalizedText };
 
-const observations: Record<TourRoomId, Record<ObservationBand, LocalizedText>> = {
+export const observations: Record<TourRoomId, Record<ObservationBand, LocalizedText>> = {
   gallery: {
     warm: {
       en: 'Mrs. Reynolds lingers over her master’s likeness. “That is my master—and very like him. It was drawn when his father was living.”',
