@@ -8,9 +8,9 @@ import { EventSystem, type EmergencyEvent } from './systems/EventSystem';
 import { GuestManager, type GuestState } from './systems/GuestManager';
 import type { LocalizedText } from './data/guests';
 import { WatercolorPass } from './visuals/WatercolorPass';
-import { WatercolorMaterial } from './visuals/WatercolorMaterial';
 import { PaperTextureGenerator, type GeneratedPaperTexture } from './visuals/PaperTextureGenerator';
 import { AtmosphericFog } from './visuals/AtmosphericFog';
+import { drawEstate, type EstateFigure, type EstateFigureKind } from './visuals/EstateScene';
 import { composeDiary, type DiaryProse } from './narrative/diary';
 import { TourSystem, tourRooms, type TourRoomId } from './systems/TourSystem';
 import { letters, type DayModifier } from './data/letters';
@@ -311,24 +311,24 @@ function localized(text: LocalizedText, language: Language) {
   return text[language as keyof LocalizedText] || text.en;
 }
 
-function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
+// 奉公人ごとの装い（ボンネットの淑女／燕尾服の紳士）。
+const FIGURE_KIND: Record<string, EstateFigureKind> = {
+  'mrs-reynolds': 'lady',
+  sarah: 'lady',
+  john: 'gent',
+  'mr-adams': 'gent',
+  thomas: 'gent',
+};
+
+function EstateCanvas({ mode, player, hour, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; hour?: number; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(mode === 'title' ? 1.04 : 1);
-  const hoverRef = useRef<Point>({ x: 0, y: 0 });
   const staffMotionRef = useRef<Record<string, Point>>({});
   const arrivedRef = useRef<Set<string>>(new Set());
   const paperTextureRef = useRef<GeneratedPaperTexture | null>(null);
   const fogRef = useRef<AtmosphericFog>(new AtmosphericFog());
-  const propsRef = useRef({ mode, player, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
-  propsRef.current = { mode, player, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
-
-  // 形状ごとの水彩素材：エッジの柔らかさ・ウォッシュ強さを一律で適用
-  const materialRef = useRef<WatercolorMaterial>(new WatercolorMaterial({
-    edgeSoftness: 0.6,
-    washStrength: 0.16,
-    addBleed: true,
-    tonalSteps: 0,
-  }));
+  const propsRef = useRef({ mode, player, hour, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
+  propsRef.current = { mode, player, hour, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -368,94 +368,33 @@ function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emerg
       if (!w || !h) { frame = requestAnimationFrame(draw); return; }
       const t = now / 1000;
       context.clearRect(0, 0, w, h);
-      const cx = w * (currentProps.mode === 'title' ? .52 : .5);
-      const cy = h * (currentProps.mode === 'title' ? .56 : .54);
-      const scale = Math.min(w / 44, h / 28) * zoomRef.current;
+      const isPhone = w < 700;
+      const zoom = zoomRef.current;
+      // スマホは1ワールド単位あたりのピクセルを大きく取り、風景と人物を近づける。
+      const baseScale = currentProps.mode === 'title'
+        ? Math.min(w / 34, h / 24)
+        : Math.min(w / (isPhone ? 16 : 30), h / (isPhone ? 16 : 21));
+      const scale = baseScale * zoom;
+      // ゲーム中はプレイヤー中心の追従カメラ。
+      let cx: number;
+      let cy: number;
+      if (currentProps.mode === 'game') {
+        const { x: px, y: py } = currentProps.player;
+        cx = w / 2 - (px - py) * Math.cos(Math.PI / 6) * scale;
+        cy = h * 0.48 - (px + py) * Math.sin(Math.PI / 6) * scale * 0.58;
+      } else {
+        cx = w * 0.52;
+        cy = h * 0.5;
+      }
       const project = (x: number, y: number, z = 0) => ({
         x: cx + (x - y) * Math.cos(Math.PI / 6) * scale,
-        y: cy + (x + y) * Math.sin(Math.PI / 6) * scale * .58 - z * scale * .9,
+        y: cy + (x + y) * Math.sin(Math.PI / 6) * scale * 0.58 - z * scale * 0.9,
       });
-      const poly = (points: Point[], fill: string, stroke?: string) => {
-        context.beginPath();
-        points.forEach((p, index) => index === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y));
-        context.closePath();
-        context.fillStyle = fill;
-        context.fill();
-        if (stroke) {
-          context.strokeStyle = stroke;
-          context.lineWidth = 1;
-          context.stroke();
-          // 水彩の縁のにじみ（WatercolorMaterial経由）
-          materialRef.current.applyEdgeSoftening(context, points, fill);
-        }
-      };
-      const line = (points: Point[], stroke: string, width = 1) => {
-        context.beginPath();
-        points.forEach((p, index) => index === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y));
-        context.strokeStyle = stroke;
-        context.lineWidth = width;
-        context.stroke();
-      };
-      // lawn and terraces
-      poly([project(-14, -8), project(14, -8), project(14, 14), project(-14, 14)], '#53684a');
-      poly([project(-12, -7), project(12, -7), project(12, 12), project(-12, 12)], '#617957');
-      poly([project(-9, -5), project(9, -5), project(9, 9), project(-9, 9)], '#6e8963');
-      // lake
-      context.fillStyle = '#4c6c70';
-      context.beginPath();
-      const l1 = project(-11, 7);
-      const l2 = project(-4, 13);
-      context.ellipse((l1.x + l2.x) / 2, (l1.y + l2.y) / 2, scale * 3.8, scale * 1.5, -.15, 0, Math.PI * 2);
-      context.fill();
-      context.fillStyle = '#618488';
-      context.beginPath();
-      context.ellipse((l1.x + l2.x) / 2 + 6, (l1.y + l2.y) / 2 - 2, scale * 2.8, scale * 1.05, -.12, 0, Math.PI * 2);
-      context.fill();
-      // gravel paths
-      poly([project(-2, -5), project(2, -5), project(2, 11), project(-2, 11)], '#baa687');
-      poly([project(-8, 1), project(8, 1), project(8, 3.2), project(-8, 3.2)], '#b49f7e');
-      poly([project(-7, 8), project(7, 8), project(7, 9.6), project(-7, 9.6)], '#a89474');
-      // main hall
-      poly([project(-5.5, 1.4), project(4.4, 1.4), project(4.4, 1.9), project(-5.5, 1.9)], '#8b7d6b');
-      poly([project(-5.5, -3.4, 5.2), project(4.4, -3.4, 5.2), project(4.4, -3.4, 0), project(-5.5, -3.4, 0)], '#b8a878');
-      poly([project(-5.5, -3.4, 5.2), project(-.5, -6, 5.2), project(4.4, -3.4, 5.2)], '#5a5a5a', '#6a5a4a');
-      poly([project(-.5, -6, 5.2), project(-.5, -6, 6.3), project(4.4, -3.4, 6.3), project(4.4, -3.4, 5.2)], '#5a5a5a');
-      // wings
-      poly([project(-8.3, -2.3, 0), project(-5.5, -2.3, 0), project(-5.5, 1.2, 0), project(-8.3, 1.2, 0)], '#cbb78f', '#806b56');
-      poly([project(4.4, -2.3, 0), project(7.1, -2.3, 0), project(7.1, 1.2, 0), project(4.4, 1.2, 0)], '#cbb78f', '#806b56');
-      poly([project(-8.5, -2.3, 3.9), project(-6.9, -3.2, 4.5), project(-5.5, -2.3, 3.9)], '#514847');
-      poly([project(4.4, -2.3, 3.9), project(5.8, -3.2, 4.5), project(7.2, -2.3, 3.9)], '#514847');
-      // windows and door
-      for (let i = 0; i < 5; i++) {
-        const p = project(-4.8 + i * 2.25, -3.48, 2.4);
-        context.fillStyle = '#4c7372'; context.fillRect(p.x - scale * .25, p.y - scale * .38, scale * .5, scale * .75);
-        context.strokeStyle = '#d6c29c'; context.strokeRect(p.x - scale * .25, p.y - scale * .38, scale * .5, scale * .75);
-      }
-      const door = project(-.5, -3.58, 1.25);
-      context.fillStyle = '#755246'; context.fillRect(door.x - scale * .3, door.y - scale * .6, scale * .6, scale * 1.25);
-      // conservatory
-      poly([project(-11, 2.2, 0), project(-7.1, 2.2, 0), project(-7.1, 4.2, 0), project(-11, 4.2, 0)], '#c9bc91', '#7d916f');
-      for (let i = -10.6; i < -7; i += .8) line([project(i, 2.2, 0), project(i, 2.2, 2)], '#799485', 1);
-      // small fountain
-      const fountain = project(-2.5, 5.4, .1);
-      context.fillStyle = '#819895'; context.beginPath(); context.ellipse(fountain.x, fountain.y, scale * 1.1, scale * .4, 0, 0, Math.PI * 2); context.fill();
-      context.fillStyle = '#c3d0bd'; context.beginPath(); context.arc(fountain.x, fountain.y - scale * .35, scale * .13, 0, Math.PI * 2); context.fill();
-      // trees framing the playable grounds
-      const oldTree = project(-12, 1, 0);
-      context.strokeStyle = '#6b4c2e'; context.lineWidth = Math.max(3, scale * .16);
-      line([oldTree, { x: oldTree.x - scale * .42, y: oldTree.y - scale * 1.6 }, { x: oldTree.x + scale * .1, y: oldTree.y - scale * 2.35 }], '#6b4c2e', Math.max(3, scale * .16));
-      context.fillStyle = '#4a5d3f';
-      for (let j = 0; j < 6; j++) { context.beginPath(); context.arc(oldTree.x + Math.sin(j * 2.1) * scale * .7, oldTree.y - scale * (1.55 + (j % 3) * .28), scale * (.55 + (j % 2) * .15), 0, Math.PI * 2); context.fill(); }
-      for (let i = 0; i < 13; i++) {
-        const angle = i * 2.4;
-        const x = Math.cos(angle) * 14 + (i % 3) * 1.3;
-        const y = Math.sin(angle) * 10 + 3;
-        const p = project(x, y, .5);
-        context.fillStyle = i % 3 === 0 ? '#2f5649' : '#3d6851';
-        context.beginPath(); context.arc(p.x, p.y, scale * (1 + (i % 2) * .22), 0, Math.PI * 2); context.fill();
-        context.fillStyle = '#674e3e'; context.fillRect(p.x - 1, p.y + scale * .45, 2, scale * .65);
-      }
-      // animated staff figures
+      // 人物は最低ピクセルサイズを保証して、スマホでも豆粒にしない。
+      const figScale = Math.max(scale * 0.95, isPhone ? 19 : 13);
+
+      // 人物の移動を進め、EstateScene に渡す配列を組み立てる。
+      const figures: EstateFigure[] = [];
       staff.forEach((person, i) => {
         const destination = currentProps.staffDestinations?.[person.id];
         const current = staffMotionRef.current[person.id] ?? { ...person.home };
@@ -472,36 +411,43 @@ function EstateCanvas({ mode, player, onNotice, onWalk, staffDestinations, emerg
             currentProps.onStaffArrival?.(person.id);
           }
         } else {
-          const roaming = { x: person.home.x + Math.sin(t * (.23 + i * .03) + i) * (1.3 + i * .12), y: person.home.y + Math.cos(t * (.19 + i * .02) + i) * .8 };
-          current.x += (roaming.x - current.x) * .04;
-          current.y += (roaming.y - current.y) * .04;
+          const roaming = { x: person.home.x + Math.sin(t * (0.23 + i * 0.03) + i) * (1.3 + i * 0.12), y: person.home.y + Math.cos(t * (0.19 + i * 0.02) + i) * 0.8 };
+          current.x += (roaming.x - current.x) * 0.04;
+          current.y += (roaming.y - current.y) * 0.04;
           arrivedRef.current.delete(person.id);
         }
         staffMotionRef.current[person.id] = current;
-        const moving = { x: current.x, y: current.y };
-        const p = project(moving.x, moving.y, .7);
-        context.fillStyle = 'rgba(18,34,32,.35)'; context.beginPath(); context.ellipse(p.x, p.y + scale * .25, scale * .35, scale * .14, 0, 0, Math.PI * 2); context.fill();
-        const bob = destination && currentProps.emergencyActive ? Math.sin(t * Math.PI * 20) * scale * .1 : 0;
-        context.fillStyle = person.color; context.beginPath(); context.arc(p.x, p.y - scale * .16 + bob, scale * .24, 0, Math.PI * 2); context.fill();
-        context.fillStyle = '#eadcc0'; context.fillRect(p.x - scale * .16, p.y + scale * .05 + bob, scale * .32, scale * .4);
-        if (currentProps.mode === 'game') { context.fillStyle = '#ecdfc3'; context.font = '9px Manrope'; context.textAlign = 'center'; context.fillText(person.initials, p.x, p.y - scale * .52); }
+        figures.push({
+          id: person.id,
+          x: current.x,
+          y: current.y,
+          kind: FIGURE_KIND[person.id] ?? 'gent',
+          color: person.color,
+          label: currentProps.mode === 'game' ? person.initials : undefined,
+          urgent: Boolean(destination && currentProps.emergencyActive),
+        });
       });
       if (currentProps.mode === 'game') {
-        const pp = project(currentProps.player.x, currentProps.player.y, .8);
-        context.fillStyle = 'rgba(226,189,137,.26)'; context.beginPath(); context.arc(pp.x, pp.y, scale * .72, 0, Math.PI * 2); context.fill();
-        context.fillStyle = '#e2bd89'; context.beginPath(); context.arc(pp.x, pp.y - scale * .25, scale * .24, 0, Math.PI * 2); context.fill();
-        context.fillStyle = '#31554c'; context.fillRect(pp.x - scale * .18, pp.y, scale * .36, scale * .55);
+        figures.push({ id: 'steward', x: currentProps.player.x, y: currentProps.player.y, kind: 'steward', color: '#c8985c' });
       }
-      // atmospheric drizzle lines
-      if (currentProps.mode === 'game') for (let i = 0; i < 30; i++) {
-        const rx = (i * 97 + now / 35) % w;
-        const ry = (i * 53 + now / 22) % h;
-        line([{ x: rx, y: ry }, { x: rx - 3, y: ry + 9 }], 'rgba(218,225,205,.13)', 1);
-      }
-      // Watercolour composite pass（WatercolorPass 経由で一元管理）
-      // ウォッシュ / 紙ざわり / 霞み / ヴィネットをまとめて適用
-      const gameHour = (now / 1000 / 60) % 24; // アニメーション時刻から1日周期で算出
+
+      // 館の時計があればその時刻の空に。無ければ朝の光。
+      const gameHour = typeof currentProps.hour === 'number' ? currentProps.hour : 9;
       fogRef.current.update(gameHour, 1 / 60);
+      drawEstate({
+        ctx: context,
+        w,
+        h,
+        mode: currentProps.mode,
+        time: t,
+        hour: gameHour,
+        rainy: true,
+        isPhone,
+        scale,
+        figScale,
+        project,
+        figures,
+      });
       WatercolorPass.apply(
         context,
         w,
@@ -1079,7 +1025,7 @@ function App() {
         </aside>
         <main className="view-wrap" onClick={() => setLeftOpen(false)}>
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
-           <EstateCanvas mode="game" player={player} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
+           <EstateCanvas mode="game" player={player} hour={minutes / 60} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
            {roomFade && <div className="room-transition" aria-hidden="true" />}
            {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
