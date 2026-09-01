@@ -19,6 +19,8 @@ export type EstateFigure = {
   expression?: FigureExpression;
   /** 顔の向き。画面X方向の符号（-1 左, 0 正面, 1 右） */
   face?: number;
+  /** 歩行中か（歩きの上下動・腕振りに使う） */
+  moving?: boolean;
 };
 
 export type EstateSceneInput = {
@@ -154,12 +156,15 @@ function paintTree(ctx: CanvasRenderingContext2D, base: Pt, r: number, seed: num
 
 // リージェンシー期の人物シルエット。頭・胴（淑女はベル型のドレス、紳士は燕尾服）・影。
 function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: EstateFigure): void {
-  const wob = fig.urgent ? Math.sin(performance.now() / 90) * s * 0.06 : 0;
-  const x = at.x;
-  const y = at.y + wob;
+  const now = performance.now();
+  const shake = fig.urgent ? Math.sin(now / 90) * s * 0.06 : 0;
+  // 歩行中の上下動
+  const bob = fig.moving ? Math.abs(Math.sin(now / 130)) * s * 0.06 : Math.sin(now / 900 + at.x) * s * 0.012;
+  const x = at.x + shake;
+  const y = at.y - bob;
 
-  // 影
-  blob(ctx, x, y + s * 0.06, s * 0.42, s * 0.14, 'rgba(30,42,36,0.28)', 0.5);
+  // 影（歩行で伸縮）
+  blob(ctx, at.x, at.y + s * 0.06, s * (0.42 - bob / s * 0.5), s * 0.14, 'rgba(30,42,36,0.28)', 0.5);
 
   ctx.save();
   ctx.translate(x, y);
@@ -167,8 +172,8 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   const skin = '#e7d6bd';
   const hairHex = fig.kind === 'lady' ? mixHex(fig.color, '#3a2c20', 0.62) : mixHex('#3a2f24', ink, 0.35);
   // 頭の中心と半径（顔を描くので大きめに）
-  const hr = s * 0.18;
-  const hcy = fig.kind === 'lady' ? -s * 0.9 : -s * 0.86;
+  const hr = s * 0.23;
+  const hcy = fig.kind === 'lady' ? -s * 0.93 : -s * 0.9;
 
   if (fig.kind === 'lady') {
     // ベル型のドレス
@@ -304,6 +309,53 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     }
   }
   ctx.restore();
+
+  // --- 感情マーク（小さくても伝わる漫画的な符号）---
+  {
+    const expr: FigureExpression = fig.expression ?? 'calm';
+    const cue = fig.urgent ? 'alert' : expr === 'busy' ? 'sweat' : expr === 'concerned' ? 'gloom' : expr === 'pleased' ? 'note' : null;
+    if (cue) {
+      const cx = x + s * 0.62;
+      const cyc = y - s * 1.02 + Math.sin(now / 320) * s * 0.03;
+      const r = s * 0.2;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // 白いふきだし状のハロー
+      ctx.fillStyle = 'rgba(247,241,225,0.92)';
+      ctx.beginPath();
+      ctx.arc(cx, cyc, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (cue === 'alert') {
+        ctx.fillStyle = '#c2452f';
+        ctx.font = `bold ${Math.round(r * 2)}px Georgia, serif`;
+        ctx.fillText('!', cx, cyc + r * 0.08);
+      } else if (cue === 'note') {
+        ctx.fillStyle = '#b3752f';
+        ctx.font = `${Math.round(r * 1.9)}px Georgia, serif`;
+        ctx.fillText('♪', cx, cyc + r * 0.06);
+      } else if (cue === 'sweat') {
+        ctx.fillStyle = '#5b86b3';
+        ctx.beginPath();
+        ctx.moveTo(cx, cyc - r * 0.6);
+        ctx.quadraticCurveTo(cx + r * 0.55, cyc + r * 0.15, cx, cyc + r * 0.6);
+        ctx.quadraticCurveTo(cx - r * 0.55, cyc + r * 0.15, cx, cyc - r * 0.6);
+        ctx.fill();
+      } else {
+        // gloom: 縦の小さな三本線
+        ctx.strokeStyle = '#6a6f6a';
+        ctx.lineWidth = Math.max(r * 0.22, 1);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let k = -1; k <= 1; k += 1) {
+          ctx.moveTo(cx + k * r * 0.42, cyc - r * 0.5);
+          ctx.lineTo(cx + k * r * 0.42, cyc + r * 0.5);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
 
   if (fig.label) {
     ctx.save();

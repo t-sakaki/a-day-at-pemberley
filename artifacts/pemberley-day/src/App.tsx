@@ -350,6 +350,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
   const staffMotionRef = useRef<Record<string, Point>>({});
   const figurePrevRef = useRef<Record<string, Point>>({});
   const figureFaceRef = useRef<Record<string, number>>({});
+  const figureMovingRef = useRef<Record<string, boolean>>({});
   const arrivedRef = useRef<Set<string>>(new Set());
   const paperTextureRef = useRef<GeneratedPaperTexture | null>(null);
   const fogRef = useRef<AtmosphericFog>(new AtmosphericFog());
@@ -417,19 +418,22 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
         y: cy + (x + y) * Math.sin(Math.PI / 6) * scale * 0.58 - z * scale * 0.9,
       });
       // 人物は最低ピクセルサイズを保証して、スマホでも豆粒にしない（顔が見える大きさ）。
-      const figScale = Math.max(scale * 0.98, isPhone ? 22 : 17);
+      const figScale = Math.max(scale * 1.04, isPhone ? 30 : 24);
 
-      // 直近の移動から顔の向き（画面X方向）を求める。
+      // 直近の移動から顔の向き（画面X方向）と歩行状態を求める。
       const faceOf = (id: string, px: number, py: number) => {
         const prev = figurePrevRef.current[id];
         let face = figureFaceRef.current[id] ?? 0;
+        let moving = false;
         if (prev) {
-          const sx = (px - prev.x) - (py - prev.y); // アイソメtrの画面X成分
+          const sx = (px - prev.x) - (py - prev.y); // アイソメ投影の画面X成分
           if (Math.abs(sx) > 0.006) face = sx > 0 ? 1 : -1;
+          moving = Math.hypot(px - prev.x, py - prev.y) > 0.015;
         }
         figureFaceRef.current[id] = face;
+        figureMovingRef.current[id] = moving;
         figurePrevRef.current[id] = { x: px, y: py };
-        return face;
+        return { face, moving };
       };
 
       // 人物の移動を進め、EstateScene に渡す配列を組み立てる。
@@ -465,10 +469,11 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           label: currentProps.mode === 'game' ? staffName(person, currentProps.language) : undefined,
           urgent: Boolean(destination && currentProps.emergencyActive),
           expression: currentProps.figureExpressions?.[person.id] ?? 'calm',
-          face: faceOf(person.id, current.x, current.y),
+          ...faceOf(person.id, current.x, current.y),
         });
       });
       if (currentProps.mode === 'game') {
+        const stewardMotion = faceOf('steward', currentProps.player.x, currentProps.player.y);
         figures.push({
           id: 'steward',
           x: currentProps.player.x,
@@ -477,7 +482,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           color: '#c8985c',
           label: currentProps.language === 'ja' ? 'あなた' : 'You',
           expression: currentProps.figureExpressions?.steward ?? 'calm',
-          face: faceOf('steward', currentProps.player.x, currentProps.player.y),
+          ...stewardMotion,
         });
       }
 
