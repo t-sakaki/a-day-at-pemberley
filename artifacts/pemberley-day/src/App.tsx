@@ -344,15 +344,18 @@ const FIGURE_KIND: Record<string, EstateFigureKind> = {
   thomas: 'gent',
 };
 
-function EstateCanvas({ mode, player, hour, language = 'en', onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; hour?: number; language?: Language; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
+function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; hour?: number; language?: Language; figureExpressions?: Record<string, PortraitExpression>; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(mode === 'title' ? 1.04 : 1);
   const staffMotionRef = useRef<Record<string, Point>>({});
+  const figurePrevRef = useRef<Record<string, Point>>({});
+  const figureFaceRef = useRef<Record<string, number>>({});
+  const figureMovingRef = useRef<Record<string, boolean>>({});
   const arrivedRef = useRef<Set<string>>(new Set());
   const paperTextureRef = useRef<GeneratedPaperTexture | null>(null);
   const fogRef = useRef<AtmosphericFog>(new AtmosphericFog());
-  const propsRef = useRef({ mode, player, hour, language, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
-  propsRef.current = { mode, player, hour, language, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
+  const propsRef = useRef({ mode, player, hour, language, figureExpressions, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
+  propsRef.current = { mode, player, hour, language, figureExpressions, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -414,8 +417,24 @@ function EstateCanvas({ mode, player, hour, language = 'en', onNotice, onWalk, s
         x: cx + (x - y) * Math.cos(Math.PI / 6) * scale,
         y: cy + (x + y) * Math.sin(Math.PI / 6) * scale * 0.58 - z * scale * 0.9,
       });
-      // 人物は最低ピクセルサイズを保証して、スマホでも豆粒にしない。
-      const figScale = Math.max(scale * 0.95, isPhone ? 19 : 13);
+      // 人物は最低ピクセルサイズを保証して、スマホでも豆粒にしない（顔が見える大きさ）。
+      const figScale = Math.max(scale * 1.04, isPhone ? 30 : 24);
+
+      // 直近の移動から顔の向き（画面X方向）と歩行状態を求める。
+      const faceOf = (id: string, px: number, py: number) => {
+        const prev = figurePrevRef.current[id];
+        let face = figureFaceRef.current[id] ?? 0;
+        let moving = false;
+        if (prev) {
+          const sx = (px - prev.x) - (py - prev.y); // アイソメ投影の画面X成分
+          if (Math.abs(sx) > 0.006) face = sx > 0 ? 1 : -1;
+          moving = Math.hypot(px - prev.x, py - prev.y) > 0.015;
+        }
+        figureFaceRef.current[id] = face;
+        figureMovingRef.current[id] = moving;
+        figurePrevRef.current[id] = { x: px, y: py };
+        return { face, moving };
+      };
 
       // 人物の移動を進め、EstateScene に渡す配列を組み立てる。
       const figures: EstateFigure[] = [];
@@ -449,10 +468,22 @@ function EstateCanvas({ mode, player, hour, language = 'en', onNotice, onWalk, s
           color: person.color,
           label: currentProps.mode === 'game' ? staffName(person, currentProps.language) : undefined,
           urgent: Boolean(destination && currentProps.emergencyActive),
+          expression: currentProps.figureExpressions?.[person.id] ?? 'calm',
+          ...faceOf(person.id, current.x, current.y),
         });
       });
       if (currentProps.mode === 'game') {
-        figures.push({ id: 'steward', x: currentProps.player.x, y: currentProps.player.y, kind: 'steward', color: '#c8985c', label: currentProps.language === 'ja' ? 'あなた' : 'You' });
+        const stewardMotion = faceOf('steward', currentProps.player.x, currentProps.player.y);
+        figures.push({
+          id: 'steward',
+          x: currentProps.player.x,
+          y: currentProps.player.y,
+          kind: 'steward',
+          color: '#c8985c',
+          label: currentProps.language === 'ja' ? 'あなた' : 'You',
+          expression: currentProps.figureExpressions?.steward ?? 'calm',
+          ...stewardMotion,
+        });
       }
 
       // 館の時計があればその時刻の空に。無ければ朝の光。
@@ -692,6 +723,18 @@ function App() {
   const staffDestinations = useMemo(() => Object.fromEntries(
     emergencies.filter(event => event.assignedStaffId).map(event => [event.assignedStaffId, event.point]),
   ) as Record<string, Point>, [emergencies]);
+  const figureExpressions = useMemo(() => {
+    const map: Record<string, PortraitExpression> = {};
+    staff.forEach(person => {
+      map[person.id] = staffExpression(person.id, {
+        absent: absentStaff.includes(person.id),
+        busy: Boolean(staffDestinations[person.id]) && emergencies.length > 0,
+        morale: staffMorale,
+      });
+    });
+    map.steward = emergencies.length > 0 ? 'busy' : 'calm';
+    return map;
+  }, [absentStaff, staffDestinations, staffMorale, emergencies.length]);
   const handleStaffArrival = useCallback((staffId: string) => {
     const person = staff.find(item => item.id === staffId);
     if (!person) return;
@@ -1049,7 +1092,7 @@ function App() {
         </aside>
         <main className="view-wrap" onClick={() => setLeftOpen(false)}>
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
-           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
+           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
            {roomFade && <div className="room-transition" aria-hidden="true" />}
            {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>

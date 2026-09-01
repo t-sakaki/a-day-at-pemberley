@@ -5,6 +5,8 @@
 
 export type EstateFigureKind = 'lady' | 'gent' | 'steward';
 
+export type FigureExpression = 'calm' | 'pleased' | 'concerned' | 'busy';
+
 export type EstateFigure = {
   id: string;
   x: number;
@@ -13,6 +15,12 @@ export type EstateFigure = {
   color: string;
   label?: string;
   urgent?: boolean;
+  /** 表情（左パネルの肖像と揃える） */
+  expression?: FigureExpression;
+  /** 顔の向き。画面X方向の符号（-1 左, 0 正面, 1 右） */
+  face?: number;
+  /** 歩行中か（歩きの上下動・腕振りに使う） */
+  moving?: boolean;
 };
 
 export type EstateSceneInput = {
@@ -148,16 +156,24 @@ function paintTree(ctx: CanvasRenderingContext2D, base: Pt, r: number, seed: num
 
 // リージェンシー期の人物シルエット。頭・胴（淑女はベル型のドレス、紳士は燕尾服）・影。
 function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: EstateFigure): void {
-  const wob = fig.urgent ? Math.sin(performance.now() / 90) * s * 0.06 : 0;
-  const x = at.x;
-  const y = at.y + wob;
+  const now = performance.now();
+  const shake = fig.urgent ? Math.sin(now / 90) * s * 0.06 : 0;
+  // 歩行中の上下動
+  const bob = fig.moving ? Math.abs(Math.sin(now / 130)) * s * 0.06 : Math.sin(now / 900 + at.x) * s * 0.012;
+  const x = at.x + shake;
+  const y = at.y - bob;
 
-  // 影
-  blob(ctx, x, y + s * 0.06, s * 0.42, s * 0.14, 'rgba(30,42,36,0.28)', 0.5);
+  // 影（歩行で伸縮）
+  blob(ctx, at.x, at.y + s * 0.06, s * (0.42 - bob / s * 0.5), s * 0.14, 'rgba(30,42,36,0.28)', 0.5);
 
   ctx.save();
   ctx.translate(x, y);
   const ink = mixHex(fig.color, '#2a241d', 0.35);
+  const skin = '#e7d6bd';
+  const hairHex = fig.kind === 'lady' ? mixHex(fig.color, '#3a2c20', 0.62) : mixHex('#3a2f24', ink, 0.35);
+  // 頭の中心と半径（顔を描くので大きめに）
+  const hr = s * 0.23;
+  const hcy = fig.kind === 'lady' ? -s * 0.93 : -s * 0.9;
 
   if (fig.kind === 'lady') {
     // ベル型のドレス
@@ -172,17 +188,9 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     ctx.fill();
     // 肩・首
     ctx.fillStyle = ink;
-    ctx.fillRect(-s * 0.09, -s * 0.78, s * 0.18, s * 0.2);
-    // 頭
-    ctx.fillStyle = '#e7d6bd';
-    ctx.beginPath();
-    ctx.arc(0, -s * 0.9, s * 0.13, 0, Math.PI * 2);
-    ctx.fill();
-    // ボンネット
-    ctx.fillStyle = fig.color;
-    ctx.beginPath();
-    ctx.arc(0, -s * 0.93, s * 0.16, Math.PI * 0.05, Math.PI * 1.05);
-    ctx.fill();
+    ctx.fillRect(-s * 0.09, -s * 0.8, s * 0.18, s * 0.22);
+    ctx.fillStyle = skin;
+    ctx.fillRect(-s * 0.045, -s * 0.78, s * 0.09, s * 0.12);
   } else {
     // 脚
     ctx.strokeStyle = ink;
@@ -207,19 +215,147 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     ctx.lineTo(-s * 0.16, -s * 0.28);
     ctx.closePath();
     ctx.fill();
-    // 頭
-    ctx.fillStyle = '#e7d6bd';
+    // 首・襟（白いクラヴァット）
+    ctx.fillStyle = skin;
+    ctx.fillRect(-s * 0.05, -s * 0.78, s * 0.1, s * 0.12);
+    ctx.fillStyle = '#efe7d4';
     ctx.beginPath();
-    ctx.arc(0, -s * 0.84, s * 0.12, 0, Math.PI * 2);
+    ctx.moveTo(-s * 0.09, -s * 0.72);
+    ctx.lineTo(s * 0.09, -s * 0.72);
+    ctx.lineTo(0, -s * 0.6);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // --- 頭部と顔 ---
+  ctx.globalAlpha = 1;
+  // 髪（頭の後ろ）
+  ctx.fillStyle = hairHex;
+  ctx.beginPath();
+  ctx.arc(0, hcy, hr * 1.16, 0, Math.PI * 2);
+  ctx.fill();
+  // 顔
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(0, hcy, hr * 0.92, hr, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const expr: FigureExpression = fig.expression ?? 'calm';
+  const gaze = (fig.face ?? 0) * hr * 0.2;
+  const eyeY = hcy - hr * 0.06;
+  const eyeDX = hr * 0.42;
+  const eyeR = Math.max(hr * 0.12, 0.9);
+  // 目
+  ctx.fillStyle = '#2a2118';
+  ctx.beginPath();
+  ctx.arc(-eyeDX + gaze, eyeY, eyeR, 0, Math.PI * 2);
+  ctx.arc(eyeDX + gaze, eyeY, eyeR, 0, Math.PI * 2);
+  ctx.fill();
+  // 眉（表情で角度を変える）
+  const browY = eyeY - hr * 0.42;
+  const browLen = hr * 0.4;
+  const browInner = expr === 'concerned' ? -hr * 0.16 : expr === 'busy' ? hr * 0.12 : 0;
+  const browOuter = expr === 'pleased' ? -hr * 0.06 : 0;
+  ctx.strokeStyle = hairHex;
+  ctx.lineWidth = Math.max(hr * 0.14, 0.8);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-eyeDX - browLen / 2 + gaze, browY + browOuter);
+  ctx.lineTo(-eyeDX + browLen / 2 + gaze, browY + browInner);
+  ctx.moveTo(eyeDX - browLen / 2 + gaze, browY + browInner);
+  ctx.lineTo(eyeDX + browLen / 2 + gaze, browY + browOuter);
+  ctx.stroke();
+  // 頬（上機嫌のとき）
+  if (expr === 'pleased') {
+    ctx.fillStyle = 'rgba(202,120,96,0.34)';
+    ctx.beginPath();
+    ctx.arc(-hr * 0.55 + gaze, eyeY + hr * 0.4, hr * 0.24, 0, Math.PI * 2);
+    ctx.arc(hr * 0.55 + gaze, eyeY + hr * 0.4, hr * 0.24, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 口
+  const mY = hcy + hr * 0.52;
+  const mW = hr * 0.34;
+  const curve = expr === 'pleased' ? hr * 0.34 : expr === 'concerned' ? -hr * 0.2 : expr === 'busy' ? hr * 0.03 : hr * 0.12;
+  ctx.strokeStyle = mixHex(ink, '#7a3b34', 0.5);
+  ctx.lineWidth = Math.max(hr * 0.13, 0.8);
+  ctx.beginPath();
+  ctx.moveTo(-mW + gaze, mY);
+  ctx.quadraticCurveTo(gaze, mY + curve, mW + gaze, mY);
+  ctx.stroke();
+
+  // 髪・帽子（前面）
+  if (fig.kind === 'lady') {
+    // ボンネット
+    ctx.fillStyle = fig.color;
+    ctx.beginPath();
+    ctx.arc(0, hcy - hr * 0.15, hr * 1.2, Math.PI * 1.02, Math.PI * 2.02);
+    ctx.fill();
+    ctx.fillStyle = mixHex(fig.color, '#ffffff', 0.25);
+    ctx.beginPath();
+    ctx.ellipse(0, hcy - hr * 0.15, hr * 1.2, hr * 0.5, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // 前髪
+    ctx.fillStyle = hairHex;
+    ctx.beginPath();
+    ctx.arc(0, hcy, hr * 1.02, Math.PI * 1.08, Math.PI * 1.92);
     ctx.fill();
     // シルクハット（執事はかぶらない）
     if (fig.kind === 'gent') {
       ctx.fillStyle = ink;
-      ctx.fillRect(-s * 0.12, -s * 1.12, s * 0.24, s * 0.2);
-      ctx.fillRect(-s * 0.17, -s * 0.94, s * 0.34, s * 0.05);
+      ctx.fillRect(-hr * 1.15, hcy - hr * 0.95, hr * 2.3, hr * 0.3);
+      ctx.fillRect(-hr * 0.8, hcy - hr * 2.2, hr * 1.6, hr * 1.35);
     }
   }
   ctx.restore();
+
+  // --- 感情マーク（小さくても伝わる漫画的な符号）---
+  {
+    const expr: FigureExpression = fig.expression ?? 'calm';
+    const cue = fig.urgent ? 'alert' : expr === 'busy' ? 'sweat' : expr === 'concerned' ? 'gloom' : expr === 'pleased' ? 'note' : null;
+    if (cue) {
+      const cx = x + s * 0.62;
+      const cyc = y - s * 1.02 + Math.sin(now / 320) * s * 0.03;
+      const r = s * 0.2;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // 白いふきだし状のハロー
+      ctx.fillStyle = 'rgba(247,241,225,0.92)';
+      ctx.beginPath();
+      ctx.arc(cx, cyc, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (cue === 'alert') {
+        ctx.fillStyle = '#c2452f';
+        ctx.font = `bold ${Math.round(r * 2)}px Georgia, serif`;
+        ctx.fillText('!', cx, cyc + r * 0.08);
+      } else if (cue === 'note') {
+        ctx.fillStyle = '#b3752f';
+        ctx.font = `${Math.round(r * 1.9)}px Georgia, serif`;
+        ctx.fillText('♪', cx, cyc + r * 0.06);
+      } else if (cue === 'sweat') {
+        ctx.fillStyle = '#5b86b3';
+        ctx.beginPath();
+        ctx.moveTo(cx, cyc - r * 0.6);
+        ctx.quadraticCurveTo(cx + r * 0.55, cyc + r * 0.15, cx, cyc + r * 0.6);
+        ctx.quadraticCurveTo(cx - r * 0.55, cyc + r * 0.15, cx, cyc - r * 0.6);
+        ctx.fill();
+      } else {
+        // gloom: 縦の小さな三本線
+        ctx.strokeStyle = '#6a6f6a';
+        ctx.lineWidth = Math.max(r * 0.22, 1);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let k = -1; k <= 1; k += 1) {
+          ctx.moveTo(cx + k * r * 0.42, cyc - r * 0.5);
+          ctx.lineTo(cx + k * r * 0.42, cyc + r * 0.5);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
 
   if (fig.label) {
     ctx.save();
