@@ -19,11 +19,14 @@ export type Letter = {
   from: LocalizedText;
   body: LocalizedText;
   options: [LetterOption, LetterOption];
+  /** 差出人の肖像（src/data/portraits の id）。無ければ描き顔 */
+  portraitId?: string;
 };
 
 export const letters: Letter[] = [
   {
     id: 'darcy',
+    portraitId: 'darcy',
     from: {
       en: 'Mr. Darcy, by last night’s post',
       ja: 'ダーシー氏（昨夜の便）',
@@ -123,6 +126,7 @@ export const letters: Letter[] = [
   },
   {
     id: 'lady-catherine',
+    portraitId: 'lady-catherine',
     from: {
       en: 'Lady Catherine de Bourgh, Rosings Park',
       ja: 'キャサリン・ド・バーグ夫人（ロージングズ・パーク）',

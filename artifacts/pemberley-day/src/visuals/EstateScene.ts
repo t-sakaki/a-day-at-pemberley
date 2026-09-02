@@ -5,7 +5,7 @@
 
 export type EstateFigureKind = 'lady' | 'gent' | 'steward';
 
-export type FigureExpression = 'calm' | 'pleased' | 'concerned' | 'busy';
+export type FigureExpression = 'calm' | 'pleased' | 'concerned' | 'busy' | 'tense';
 
 export type EstateFigure = {
   id: string;
@@ -254,7 +254,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   // 眉（表情で角度を変える）
   const browY = eyeY - hr * 0.42;
   const browLen = hr * 0.4;
-  const browInner = expr === 'concerned' ? -hr * 0.16 : expr === 'busy' ? hr * 0.12 : 0;
+  const browInner = expr === 'concerned' ? -hr * 0.16 : expr === 'busy' || expr === 'tense' ? hr * 0.12 : 0;
   const browOuter = expr === 'pleased' ? -hr * 0.06 : 0;
   ctx.strokeStyle = hairHex;
   ctx.lineWidth = Math.max(hr * 0.14, 0.8);
@@ -276,7 +276,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   // 口
   const mY = hcy + hr * 0.52;
   const mW = hr * 0.34;
-  const curve = expr === 'pleased' ? hr * 0.34 : expr === 'concerned' ? -hr * 0.2 : expr === 'busy' ? hr * 0.03 : hr * 0.12;
+  const curve = expr === 'pleased' ? hr * 0.34 : expr === 'concerned' ? -hr * 0.2 : expr === 'busy' ? hr * 0.03 : expr === 'tense' ? 0 : hr * 0.12;
   ctx.strokeStyle = mixHex(ink, '#7a3b34', 0.5);
   ctx.lineWidth = Math.max(hr * 0.13, 0.8);
   ctx.beginPath();

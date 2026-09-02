@@ -14,7 +14,8 @@ import { drawEstate, type EstateFigure, type EstateFigureKind } from './visuals/
 import { composeDiary, type DiaryProse } from './narrative/diary';
 import { TourSystem, tourRooms, type TourRoomId } from './systems/TourSystem';
 import { letters, type DayModifier } from './data/letters';
-import { LivingPortrait, type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
+import { type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
+import { CharacterPortrait } from './components/CharacterPortrait';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
@@ -333,7 +334,22 @@ function moodExpression(mood: number): PortraitExpression {
   if (mood >= 55) return 'calm';
   return 'concerned';
 }
-const GUEST_PORTRAIT_KIND: Record<string, PortraitKind> = { 'the-gardiners': 'gent', 'elizabeth-bennet': 'lady' };
+const GUEST_PORTRAIT_KIND: Record<string, PortraitKind> = {
+  'the-gardiners': 'gent',
+  'elizabeth-bennet': 'lady',
+  darcy: 'gent',
+  georgiana: 'lady',
+  bingley: 'gent',
+  caroline: 'lady',
+  louisa: 'lady',
+};
+// ダーシー氏の帰館以降、芝生を歩いて現れる来客（原作 ch.43 の再会場面）。
+const ROAMING_VISITORS: Record<string, { kind: 'lady' | 'gent'; home: Point }> = {
+  darcy: { kind: 'gent', home: { x: 3, y: 6 } },
+  georgiana: { kind: 'lady', home: { x: -2, y: 8 } },
+  bingley: { kind: 'gent', home: { x: 6, y: 8 } },
+  'elizabeth-bennet': { kind: 'lady', home: { x: 0, y: 9 } },
+};
 
 // 奉公人ごとの装い（ボンネットの淑女／燕尾服の紳士）。
 const FIGURE_KIND: Record<string, EstateFigureKind> = {
@@ -344,7 +360,9 @@ const FIGURE_KIND: Record<string, EstateFigureKind> = {
   thomas: 'gent',
 };
 
-function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; hour?: number; language?: Language; figureExpressions?: Record<string, PortraitExpression>; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
+type Visitor = { id: string; kind: 'lady' | 'gent'; color: string; label: string; expression: PortraitExpression };
+
+function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, visitors, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; hour?: number; language?: Language; figureExpressions?: Record<string, PortraitExpression>; visitors?: Visitor[]; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(mode === 'title' ? 1.04 : 1);
   const staffMotionRef = useRef<Record<string, Point>>({});
@@ -354,8 +372,8 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
   const arrivedRef = useRef<Set<string>>(new Set());
   const paperTextureRef = useRef<GeneratedPaperTexture | null>(null);
   const fogRef = useRef<AtmosphericFog>(new AtmosphericFog());
-  const propsRef = useRef({ mode, player, hour, language, figureExpressions, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
-  propsRef.current = { mode, player, hour, language, figureExpressions, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
+  const propsRef = useRef({ mode, player, hour, language, figureExpressions, visitors, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
+  propsRef.current = { mode, player, hour, language, figureExpressions, visitors, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -483,6 +501,30 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           label: currentProps.language === 'ja' ? 'あなた' : 'You',
           expression: currentProps.figureExpressions?.steward ?? 'calm',
           ...stewardMotion,
+        });
+        // 芝生を歩く来客（ダーシー氏の帰館以降の再会場面など）。
+        (currentProps.visitors ?? []).forEach((visitor, vi) => {
+          const spot = ROAMING_VISITORS[visitor.id];
+          if (!spot) return;
+          const key = `visitor-${visitor.id}`;
+          const current = staffMotionRef.current[key] ?? { ...spot.home };
+          const roam = {
+            x: spot.home.x + Math.sin(t * (0.16 + vi * 0.02) + vi * 2) * 1.6,
+            y: spot.home.y + Math.cos(t * (0.13 + vi * 0.02) + vi * 2) * 1.0,
+          };
+          current.x += (roam.x - current.x) * 0.03;
+          current.y += (roam.y - current.y) * 0.03;
+          staffMotionRef.current[key] = current;
+          figures.push({
+            id: key,
+            x: current.x,
+            y: current.y,
+            kind: visitor.kind,
+            color: visitor.color,
+            label: visitor.label,
+            expression: visitor.expression,
+            ...faceOf(key, current.x, current.y),
+          });
         });
       }
 
@@ -735,6 +777,15 @@ function App() {
     map.steward = emergencies.length > 0 ? 'busy' : 'calm';
     return map;
   }, [absentStaff, staffDestinations, staffMorale, emergencies.length]);
+  const estateVisitors = useMemo<Visitor[]>(() => guestStates
+    .filter(guest => ROAMING_VISITORS[guest.id])
+    .map(guest => ({
+      id: guest.id,
+      kind: ROAMING_VISITORS[guest.id].kind,
+      color: guest.color,
+      label: language === 'ja' ? guest.nameJa : guest.name,
+      expression: guest.id === 'darcy' && guest.mood < 80 ? 'tense' : moodExpression(guest.mood),
+    })), [guestStates, language]);
   const handleStaffArrival = useCallback((staffId: string) => {
     const person = staff.find(item => item.id === staffId);
     if (!person) return;
@@ -1092,7 +1143,7 @@ function App() {
         </aside>
         <main className="view-wrap" onClick={() => setLeftOpen(false)}>
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
-           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
+           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
            {roomFade && <div className="room-transition" aria-hidden="true" />}
            {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
@@ -1109,9 +1160,9 @@ function App() {
             {guestStates.map(guest => {
               const voiceId = `guest-${guest.id}-${guest.line === guest.complaintLine ? 'complaint' : 'arrival'}`;
               const guestDisplayName = language === 'ja' ? guest.nameJa : guest.name;
-              return <div className="guest-card" key={guest.id}><div className="guest-head"><LivingPortrait seed={guest.id} kind={GUEST_PORTRAIT_KIND[guest.id] ?? 'lady'} color={guest.color} expression={moodExpression(guest.mood)} size={44} title={guestDisplayName} /><div className="guest-head-text"><strong>{guestDisplayName}</strong><small>{language === 'ja' ? guest.titleJa : guest.title}</small></div><b>{guest.mood}%</b></div><p>“{localized(guest.line, language)}”<button type="button" className="line-replay" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(voiceId, language)}><Volume2 size={12} /></button></p><small>{copy.preferences}: {guest.preferences.join(' · ')}</small></div>;
+              return <div className="guest-card" key={guest.id}><div className="guest-head"><CharacterPortrait id={guest.id} kind={GUEST_PORTRAIT_KIND[guest.id] ?? 'lady'} color={guest.color} expression={moodExpression(guest.mood)} size={46} title={guestDisplayName} /><div className="guest-head-text"><strong>{guestDisplayName}</strong><small>{language === 'ja' ? guest.titleJa : guest.title}</small></div><b>{guest.mood}%</b></div><p>“{localized(guest.line, language)}”<button type="button" className="line-replay" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(voiceId, language)}><Volume2 size={12} /></button></p><small>{copy.preferences}: {guest.preferences.join(' · ')}</small></div>;
             })}
-            {staff.map(person => <div key={person.id} className={`staff-card ${selectedStaff === person.id ? 'selected' : ''}`} onClick={() => setSelectedStaff(person.id)}><div className="staff-row"><LivingPortrait seed={person.id} kind={FIGURE_KIND[person.id] ?? 'gent'} color={person.color} expression={staffExpression(person.id, { absent: absentStaff.includes(person.id), busy: Boolean(staffDestinations[person.id]) && emergencies.length > 0, morale: staffMorale })} size={40} title={staffName(person, language)} /><div><strong>{staffName(person, language)}</strong><small>{staffRole(person, language)}</small></div><i className="status-dot" /></div>{selectedStaff === person.id && <div className="focus-row">{emergencies.slice(0, 3).map(event => <button key={event.id} className="focus-btn" onClick={(clickEvent) => { clickEvent.stopPropagation(); dispatchStaff(event, person); }}>{copy.dispatch} · {localized(event.location, language)}</button>)}{!emergencies.length && tourRooms.map(room => <button key={room.id} className={`focus-btn ${focuses[person.id] === room.focus ? 'active' : ''}`} onClick={(event) => { event.stopPropagation(); setFocuses(current => ({ ...current, [person.id]: room.focus })); notify(`${staffName(person, language)} · ${localized(room.name, language)}`); }}>{localized(room.name, language)}</button>)}</div>}</div>)}
+            {staff.map(person => <div key={person.id} className={`staff-card ${selectedStaff === person.id ? 'selected' : ''}`} onClick={() => setSelectedStaff(person.id)}><div className="staff-row"><CharacterPortrait id={person.id} kind={FIGURE_KIND[person.id] ?? 'gent'} color={person.color} expression={staffExpression(person.id, { absent: absentStaff.includes(person.id), busy: Boolean(staffDestinations[person.id]) && emergencies.length > 0, morale: staffMorale })} size={40} title={staffName(person, language)} /><div><strong>{staffName(person, language)}</strong><small>{staffRole(person, language)}</small></div><i className="status-dot" /></div>{selectedStaff === person.id && <div className="focus-row">{emergencies.slice(0, 3).map(event => <button key={event.id} className="focus-btn" onClick={(clickEvent) => { clickEvent.stopPropagation(); dispatchStaff(event, person); }}>{copy.dispatch} · {localized(event.location, language)}</button>)}{!emergencies.length && tourRooms.map(room => <button key={room.id} className={`focus-btn ${focuses[person.id] === room.focus ? 'active' : ''}`} onClick={(event) => { event.stopPropagation(); setFocuses(current => ({ ...current, [person.id]: room.focus })); notify(`${staffName(person, language)} · ${localized(room.name, language)}`); }}>{localized(room.name, language)}</button>)}</div>}</div>)}
            <div className="section-label">{t('eventLog')}</div>
           <ul className="log">{logs.map((item, i) => <li key={`${item.time}-${i}`}><time>{item.time}</time><span>{item.text}</span>{item.voiceId && <button type="button" className="line-replay" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(item.voiceId as string, language)}><Volume2 size={12} /></button>}</li>)}</ul>
           <div style={{ color: '#87a095', fontSize: 10, marginTop: 16, lineHeight: 1.6 }}><Wind size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Wind from the west · lake path is slick</div>
@@ -1135,7 +1186,10 @@ function App() {
               const chosen = letterChoices[letter.id];
               return <article className={`letter-card ${chosen !== undefined ? 'answered' : ''}`} key={letter.id}>
                 <div className="letter-from">
-                  <span>{localized(letter.from, language)}</span>
+                  <span className="letter-sender">
+                    {letter.portraitId && <CharacterPortrait id={letter.portraitId} kind={letter.portraitId === 'lady-catherine' ? 'lady' : 'gent'} color={letter.portraitId === 'lady-catherine' ? '#7c6f92' : '#3f4a63'} size={38} />}
+                    {localized(letter.from, language)}
+                  </span>
                   <button type="button" className="letter-read" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(`letter-${letter.id}`, language)}>
                     <Volume2 size={13} />
                   </button>
