@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react';
 
 export type PortraitKind = 'lady' | 'gent' | 'steward';
-export type PortraitExpression = 'calm' | 'pleased' | 'concerned' | 'busy';
+export type PortraitExpression = 'calm' | 'pleased' | 'concerned' | 'busy' | 'tense';
 
 type Props = {
   /** stable id used to vary blink timing / face proportions between characters */
@@ -38,6 +38,7 @@ const MOUTHS: Record<PortraitExpression, string> = {
   pleased: 'M22.5 44.6 Q30 51.5 37.5 44.6 Q30 48 22.5 44.6',
   concerned: 'M24 46.4 Q30 44.4 36 46.4 Q30 48.6 24 46.4',
   busy: 'M25.5 45.6 Q30 47 34.5 45.6 Q30 47.6 25.5 45.6',
+  tense: 'M25 45.8 L35 45.8',
 };
 
 // [左眉の回転, 右眉の回転, まぶたの下がり(0-1)]
@@ -46,6 +47,7 @@ const BROWS: Record<PortraitExpression, [number, number, number]> = {
   pleased: [-7, 7, 0],
   concerned: [15, -15, 0.16],
   busy: [12, -12, 0.34],
+  tense: [6, -6, 0.1],
 };
 
 export function LivingPortrait({ seed, kind, color, expression = 'calm', size = 40, title }: Props) {
