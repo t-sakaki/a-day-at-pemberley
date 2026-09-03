@@ -21,6 +21,8 @@ export type EstateFigure = {
   face?: number;
   /** 歩行中か（歩きの上下動・腕振りに使う） */
   moving?: boolean;
+  /** 顔に貼る肖像画（左パネルのカードと同じ画像）。無ければ描き顔。 */
+  portrait?: HTMLImageElement | null;
 };
 
 export type EstateSceneInput = {
@@ -240,6 +242,33 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   ctx.ellipse(0, hcy, hr * 0.92, hr, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // 肖像画があれば頭の円にクリップして貼る（cover 合わせ・上端寄せ）。
+  const photo = fig.portrait;
+  const hasPhoto = !!photo && photo.complete && photo.naturalWidth > 0;
+  if (hasPhoto && photo) {
+    const rx = hr * 1.05;
+    const ry = hr * 1.18;
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, hcy - hr * 0.04, rx, ry, 0, 0, Math.PI * 2);
+    ctx.clip();
+    const cover = Math.max((rx * 2) / photo.naturalWidth, (ry * 2.3) / photo.naturalHeight);
+    const dw = photo.naturalWidth * cover;
+    const dh = photo.naturalHeight * cover;
+    ctx.drawImage(photo, -dw / 2, hcy - hr * 0.04 - ry, dw, dh);
+    ctx.restore();
+    // 縁を少しなじませる
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = Math.max(hr * 0.1, 1);
+    ctx.strokeStyle = mixHex(fig.color, '#2a241d', 0.4);
+    ctx.beginPath();
+    ctx.ellipse(0, hcy - hr * 0.04, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (!hasPhoto) {
   const expr: FigureExpression = fig.expression ?? 'calm';
   const gaze = (fig.face ?? 0) * hr * 0.2;
   const eyeY = hcy - hr * 0.06;
@@ -308,6 +337,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
       ctx.fillRect(-hr * 0.8, hcy - hr * 2.2, hr * 1.6, hr * 1.35);
     }
   }
+  } // end if(!hasPhoto)
   ctx.restore();
 
   // --- 感情マーク（小さくても伝わる漫画的な符号）---

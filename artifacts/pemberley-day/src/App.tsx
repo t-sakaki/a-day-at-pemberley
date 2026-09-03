@@ -16,6 +16,7 @@ import { TourSystem, tourRooms, type TourRoomId } from './systems/TourSystem';
 import { letters, type DayModifier } from './data/letters';
 import { type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
 import { CharacterPortrait } from './components/CharacterPortrait';
+import { portraitImage } from './data/portraits';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
@@ -487,6 +488,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           label: currentProps.mode === 'game' ? staffName(person, currentProps.language) : undefined,
           urgent: Boolean(destination && currentProps.emergencyActive),
           expression: currentProps.figureExpressions?.[person.id] ?? 'calm',
+          portrait: portraitImage(person.id, currentProps.figureExpressions?.[person.id] ?? 'calm'),
           ...faceOf(person.id, current.x, current.y),
         });
       });
@@ -523,6 +525,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
             color: visitor.color,
             label: visitor.label,
             expression: visitor.expression,
+            portrait: portraitImage(visitor.id, visitor.expression),
             ...faceOf(key, current.x, current.y),
           });
         });
