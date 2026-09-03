@@ -248,6 +248,8 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     ctx.beginPath();
     ctx.ellipse(0, cyp, rx, ry, 0, 0, Math.PI * 2);
     ctx.clip();
+    // 進行方向へ顔を向ける（画面左へ歩くときだけ左右反転）。
+    if ((fig.face ?? 0) < 0) ctx.scale(-1, 1);
     // 正方形画像。顔が上寄りなので、頭の中心が hcy に来るよう上端を合わせる。
     const draw = rx * 2.2;
     ctx.drawImage(photo, -draw / 2, cyp - ry - hr * 0.05, draw, draw);
