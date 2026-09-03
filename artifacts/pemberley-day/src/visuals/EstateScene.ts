@@ -231,6 +231,28 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
 
   // --- 頭部と顔 ---
   ctx.globalAlpha = 1;
+  const photo = fig.portrait;
+  const hasPhoto = !!photo && photo.complete && photo.naturalWidth > 0;
+
+  if (hasPhoto && photo) {
+    // 背景透過の肖像画。描き顔の髪・肌は描かず、頭の位置に画像を直接重ねる。
+    // 画像自体に髪が入っているので裏当ては不要。首元だけ薄く肌色を敷く。
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(0, hcy + hr * 0.7, hr * 0.34, hr * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const rx = hr * 1.32;
+    const ry = hr * 1.5;
+    const cyp = hcy - hr * 0.08;
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, cyp, rx, ry, 0, 0, Math.PI * 2);
+    ctx.clip();
+    // 正方形画像。顔が上寄りなので、頭の中心が hcy に来るよう上端を合わせる。
+    const draw = rx * 2.2;
+    ctx.drawImage(photo, -draw / 2, cyp - ry - hr * 0.05, draw, draw);
+    ctx.restore();
+  } else {
   // 髪（頭の後ろ）
   ctx.fillStyle = hairHex;
   ctx.beginPath();
@@ -241,31 +263,6 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   ctx.beginPath();
   ctx.ellipse(0, hcy, hr * 0.92, hr, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  // 肖像画があれば頭の円にクリップして貼る（cover 合わせ・上端寄せ）。
-  const photo = fig.portrait;
-  const hasPhoto = !!photo && photo.complete && photo.naturalWidth > 0;
-  if (hasPhoto && photo) {
-    const rx = hr * 1.05;
-    const ry = hr * 1.18;
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(0, hcy - hr * 0.04, rx, ry, 0, 0, Math.PI * 2);
-    ctx.clip();
-    const cover = Math.max((rx * 2) / photo.naturalWidth, (ry * 2.3) / photo.naturalHeight);
-    const dw = photo.naturalWidth * cover;
-    const dh = photo.naturalHeight * cover;
-    ctx.drawImage(photo, -dw / 2, hcy - hr * 0.04 - ry, dw, dh);
-    ctx.restore();
-    // 縁を少しなじませる
-    ctx.save();
-    ctx.globalAlpha = 0.45;
-    ctx.lineWidth = Math.max(hr * 0.1, 1);
-    ctx.strokeStyle = mixHex(fig.color, '#2a241d', 0.4);
-    ctx.beginPath();
-    ctx.ellipse(0, hcy - hr * 0.04, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
   }
 
   if (!hasPhoto) {
