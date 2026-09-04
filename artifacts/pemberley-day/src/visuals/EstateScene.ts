@@ -23,6 +23,18 @@ export type EstateFigure = {
   moving?: boolean;
   /** 顔に貼る肖像画（左パネルのカードと同じ画像）。無ければ描き顔。 */
   portrait?: HTMLImageElement | null;
+  /** 肖像画の人物 id（貼り付け位置の微調整 PORTRAIT_FIT の参照に使う）。 */
+  portraitId?: string;
+};
+
+// 肖像画ごとの貼り付け微調整。キャスト表は半身像でポーズや顔位置がまちまちなので、
+// 歩く人物の頭にきれいに載るよう個別に補正する。dx/dy は hr 単位、rot はラジアン。
+const PORTRAIT_FIT: Record<string, { scale?: number; dx?: number; dy?: number; rot?: number }> = {
+  // うつむき加減の斜め半身像。頭を少し起こし、右にずれた顔を中央へ。
+  darcy: { scale: 1.16, dx: -0.12, dy: 0.18, rot: -0.1 },
+  bingley: { scale: 1.12, dy: 0.12 },
+  georgiana: { scale: 1.08, dx: 0.06, dy: 0.06 },
+  louisa: { scale: 1.06, dy: 0.06 },
 };
 
 export type EstateSceneInput = {
@@ -240,8 +252,8 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     // 紳士は頭の基準位置が高いので、少し下げて燕尾服の襟に接がせる。
     const phcy = fig.kind === 'lady' ? hcy : hcy + hr * 0.42;
     const draw = (hr * 2) / 0.52;
-    const imgX = -draw * 0.5;
-    const imgY = phcy - draw * 0.47;
+    const fit = (fig.portraitId && PORTRAIT_FIT[fig.portraitId]) || {};
+    const fitScale = fit.scale ?? 1;
 
     // 首と肩ヨーク（ポーズに依らず頭を胴に載せる土台。肖像の前に敷く）。
     const torsoTop = phcy + hr * 0.7;
@@ -274,7 +286,10 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     ctx.clip();
     // 進行方向へ顔を向ける（画面左へ歩くときだけ左右反転）。
     if ((fig.face ?? 0) < 0) ctx.scale(-1, 1);
-    ctx.drawImage(photo, imgX, imgY, draw, draw);
+    // 肖像ごとの微調整（頭の中心を原点に、傾き・ずれ・拡大を補正）。
+    ctx.translate((fit.dx ?? 0) * hr, phcy + (fit.dy ?? 0) * hr);
+    if (fit.rot) ctx.rotate(fit.rot);
+    ctx.drawImage(photo, -draw * 0.5 * fitScale, -draw * 0.47 * fitScale, draw * fitScale, draw * fitScale);
     ctx.restore();
   } else {
   // 髪（頭の後ろ）

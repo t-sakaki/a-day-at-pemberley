@@ -489,6 +489,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           urgent: Boolean(destination && currentProps.emergencyActive),
           expression: currentProps.figureExpressions?.[person.id] ?? 'calm',
           portrait: portraitImage(person.id, currentProps.figureExpressions?.[person.id] ?? 'calm'),
+          portraitId: person.id,
           ...faceOf(person.id, current.x, current.y),
         });
       });
@@ -533,6 +534,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
             label: visitor.label,
             expression: visitor.expression,
             portrait: portraitImage(visitor.id, visitor.expression),
+            portraitId: visitor.id,
             face: near ? facePlayer : motion.face,
             moving: near ? false : motion.moving,
           });
