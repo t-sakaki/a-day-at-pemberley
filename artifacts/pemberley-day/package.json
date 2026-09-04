@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",
     "vo": "tsx scripts/generate-vo.ts",
+    "cap:assets": "node scripts/gen-app-assets.mjs && capacitor-assets generate --android",
     "cap:build": "CAPACITOR=1 vite build --config vite.config.ts && cap sync android",
     "cap:open": "cap open android",
     "cap:run": "CAPACITOR=1 vite build --config vite.config.ts && cap sync android && cap run android"
