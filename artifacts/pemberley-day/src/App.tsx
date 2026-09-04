@@ -517,6 +517,13 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           current.x += (roam.x - current.x) * 0.03;
           current.y += (roam.y - current.y) * 0.03;
           staffMotionRef.current[key] = current;
+          const motion = faceOf(key, current.x, current.y);
+          // 執事（プレイヤー）が近くにいると、そちらへ顔を向けて足を止める
+          // （原作 ch.43 の「来訪者が振り返って気づく」場面）。
+          const dx = currentProps.player.x - current.x;
+          const dy = currentProps.player.y - current.y;
+          const near = Math.hypot(dx, dy) < 3.2;
+          const facePlayer = (dx - dy) > 0 ? 1 : -1;
           figures.push({
             id: key,
             x: current.x,
@@ -526,7 +533,8 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
             label: visitor.label,
             expression: visitor.expression,
             portrait: portraitImage(visitor.id, visitor.expression),
-            ...faceOf(key, current.x, current.y),
+            face: near ? facePlayer : motion.face,
+            moving: near ? false : motion.moving,
           });
         });
       }
