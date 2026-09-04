@@ -16,6 +16,7 @@ import { TourSystem, tourRooms, type TourRoomId } from './systems/TourSystem';
 import { letters, type DayModifier } from './data/letters';
 import { type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
 import { CharacterPortrait } from './components/CharacterPortrait';
+import { portraitImage } from './data/portraits';
 
 type Phase = 'title' | 'game';
 type Point = { x: number; y: number };
@@ -487,6 +488,8 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           label: currentProps.mode === 'game' ? staffName(person, currentProps.language) : undefined,
           urgent: Boolean(destination && currentProps.emergencyActive),
           expression: currentProps.figureExpressions?.[person.id] ?? 'calm',
+          portrait: portraitImage(person.id, currentProps.figureExpressions?.[person.id] ?? 'calm'),
+          portraitId: person.id,
           ...faceOf(person.id, current.x, current.y),
         });
       });
@@ -515,6 +518,13 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
           current.x += (roam.x - current.x) * 0.03;
           current.y += (roam.y - current.y) * 0.03;
           staffMotionRef.current[key] = current;
+          const motion = faceOf(key, current.x, current.y);
+          // 執事（プレイヤー）が近くにいると、そちらへ顔を向けて足を止める
+          // （原作 ch.43 の「来訪者が振り返って気づく」場面）。
+          const dx = currentProps.player.x - current.x;
+          const dy = currentProps.player.y - current.y;
+          const near = Math.hypot(dx, dy) < 3.2;
+          const facePlayer = (dx - dy) > 0 ? 1 : -1;
           figures.push({
             id: key,
             x: current.x,
@@ -523,7 +533,10 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
             color: visitor.color,
             label: visitor.label,
             expression: visitor.expression,
-            ...faceOf(key, current.x, current.y),
+            portrait: portraitImage(visitor.id, visitor.expression),
+            portraitId: visitor.id,
+            face: near ? facePlayer : motion.face,
+            moving: near ? false : motion.moving,
           });
         });
       }
