@@ -423,6 +423,9 @@ importers:
       '@revenuecat/purchases-capacitor':
         specifier: 13.5.0
         version: 13.5.0(@capacitor/core@8.5.1)
+      '@revenuecat/purchases-js':
+        specifier: ^1.57.0
+        version: 1.57.0
     devDependencies:
       '@capacitor/assets':
         specifier: 3.0.5
@@ -1614,6 +1617,9 @@ packages:
     resolution: {integrity: sha512-m+5lockasPY9bhK989nXNUBtpoSwr6Kd8AqIhBDsq0scspJPV9QSLE1H08rFx41l3t60DNnJLtFTbFWhJyg0ZQ==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
+
+  '@revenuecat/purchases-js@1.57.0':
+    resolution: {integrity: sha512-zE50acm78PcuxIVeRW/W7EV0om5OuDbs4O0CoHZJH63z1Zgy+Avq7oCImTXRA7TioV2NmBXS3hbCRv6NvjFU9Q==}
 
   '@revenuecat/purchases-typescript-internal-esm@18.33.1':
     resolution: {integrity: sha512-X83gP4VXX4j98tZ+WW6daD40IHkPAoUUap5/rrdihLZUBeeHdWUIQlm59Syx06LwBbsvalMc1eSfMib7M5vAjA==}
@@ -5094,6 +5100,8 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.5.1
       '@revenuecat/purchases-typescript-internal-esm': 18.33.1
+
+  '@revenuecat/purchases-js@1.57.0': {}
 
   '@revenuecat/purchases-typescript-internal-esm@18.33.1': {}
 
