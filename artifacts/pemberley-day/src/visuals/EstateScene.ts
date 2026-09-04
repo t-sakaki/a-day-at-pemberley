@@ -235,24 +235,46 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   const hasPhoto = !!photo && photo.complete && photo.naturalWidth > 0;
 
   if (hasPhoto && photo) {
-    // 背景透過の肖像画。描き顔の髪・肌は描かず、頭の位置に画像を直接重ねる。
-    // 画像自体に髪が入っているので裏当ては不要。首元だけ薄く肌色を敷く。
+    // 背景透過の肖像画を頭の位置に重ねる（描き顔の髪・肌は描かない）。
+    // 肖像は顔中央・約52%幅で切り出してあるので、単純な中央合わせで載る。
+    // 紳士は頭の基準位置が高いので、少し下げて燕尾服の襟に接がせる。
+    const phcy = fig.kind === 'lady' ? hcy : hcy + hr * 0.42;
+    const draw = (hr * 2) / 0.52;
+    const imgX = -draw * 0.5;
+    const imgY = phcy - draw * 0.47;
+
+    // 首と肩ヨーク（ポーズに依らず頭を胴に載せる土台。肖像の前に敷く）。
+    const torsoTop = phcy + hr * 0.7;
+    const hw = fig.kind === 'lady' ? s * 0.25 : s * 0.21;
+    ctx.globalAlpha = 1;
     ctx.fillStyle = skin;
+    ctx.fillRect(-hr * 0.3, phcy + hr * 0.2, hr * 0.6, hr * 0.8);
+    ctx.fillStyle = fig.color;
     ctx.beginPath();
-    ctx.ellipse(0, hcy + hr * 0.7, hr * 0.34, hr * 0.5, 0, 0, Math.PI * 2);
+    ctx.moveTo(-hw, torsoTop + s * 0.36);
+    ctx.quadraticCurveTo(-hw, torsoTop - s * 0.03, -hr * 0.5, torsoTop + hr * 0.04);
+    ctx.quadraticCurveTo(0, torsoTop + hr * 0.3, hr * 0.5, torsoTop + hr * 0.04);
+    ctx.quadraticCurveTo(hw, torsoTop - s * 0.03, hw, torsoTop + s * 0.36);
+    ctx.closePath();
     ctx.fill();
-    const rx = hr * 1.32;
-    const ry = hr * 1.5;
-    const cyp = hcy - hr * 0.08;
+    if (fig.kind === 'gent') {
+      ctx.fillStyle = '#efe7d4';
+      ctx.beginPath();
+      ctx.moveTo(-hr * 0.28, torsoTop + hr * 0.02);
+      ctx.lineTo(hr * 0.28, torsoTop + hr * 0.02);
+      ctx.lineTo(0, torsoTop + hr * 0.44);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 顔（頭〜顎までにクリップ。肖像の切り口＝襟は含めない）。
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(0, cyp, rx, ry, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, phcy - hr * 0.05, hr * 1.12, hr * 1.08, 0, 0, Math.PI * 2);
     ctx.clip();
     // 進行方向へ顔を向ける（画面左へ歩くときだけ左右反転）。
     if ((fig.face ?? 0) < 0) ctx.scale(-1, 1);
-    // 正方形画像。顔が上寄りなので、頭の中心が hcy に来るよう上端を合わせる。
-    const draw = rx * 2.2;
-    ctx.drawImage(photo, -draw / 2, cyp - ry - hr * 0.05, draw, draw);
+    ctx.drawImage(photo, imgX, imgY, draw, draw);
     ctx.restore();
   } else {
   // 髪（頭の後ろ）
