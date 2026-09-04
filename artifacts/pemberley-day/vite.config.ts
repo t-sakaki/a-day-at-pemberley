@@ -5,7 +5,12 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-const rawPort = process.env.PORT;
+// When building for the Capacitor Android/iOS shell the app is served from
+// file:// (or the capacitor:// scheme), so assets must be referenced with a
+// relative base and no dev server is involved.
+const isCapacitor = process.env.CAPACITOR === '1';
+
+const rawPort = process.env.PORT ?? (isCapacitor ? '5173' : undefined);
 
 if (!rawPort) {
   throw new Error(
@@ -19,7 +24,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
+const basePath = process.env.BASE_PATH ?? (isCapacitor ? './' : undefined);
 
 if (!basePath) {
   throw new Error(

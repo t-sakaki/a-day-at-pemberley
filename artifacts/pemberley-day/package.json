@@ -9,9 +9,22 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",
-    "vo": "tsx scripts/generate-vo.ts"
+    "vo": "tsx scripts/generate-vo.ts",
+    "cap:build": "CAPACITOR=1 vite build --config vite.config.ts && cap sync android",
+    "cap:open": "cap open android",
+    "cap:run": "CAPACITOR=1 vite build --config vite.config.ts && cap sync android && cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.1",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.3",
+    "@revenuecat/purchases-capacitor": "13.5.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.1",
     "@hookform/resolvers": "^3.10.0",
     "@playwright/test": "^1.62.1",
     "@radix-ui/react-accordion": "^1.2.4",

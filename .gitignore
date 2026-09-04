@@ -50,3 +50,11 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Android / Capacitor signing
+*.keystore
+*.jks
+artifacts/pemberley-day/android/keystore.properties
+artifacts/pemberley-day/android/app/release/
+artifacts/pemberley-day/android/.gradle/
+artifacts/pemberley-day/android/local.properties
