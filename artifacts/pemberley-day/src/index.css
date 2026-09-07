@@ -129,6 +129,14 @@
 .estate-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; filter: saturate(.86) contrast(.94) sepia(.04); touch-action:none; }
 .room-transition { position:absolute; inset:0; z-index:8; pointer-events:none; background:#17262c; animation: roomTransition .3s ease-in-out both; }.room-transition + .interaction-prompt { z-index:2; }
 @keyframes roomTransition { 0%,100% { opacity:0; } 50% { opacity:1; } }
+.room-reveal { position:absolute; inset:0; z-index:9; display:grid; place-items:center; padding:20px; background:rgba(9,21,24,.6); cursor:pointer; animation: roomRevealIn .4s ease-out both; }
+.room-reveal-card { position:relative; width:min(420px,100%); background:#1b2224; box-shadow:0 24px 70px rgba(0,0,0,.45); cursor:default; overflow:hidden; }
+.room-reveal-canvas { display:block; width:100%; height:260px; }
+.room-reveal-text { padding:16px 18px 18px; color:#f2e8d2; }
+.room-reveal-text strong { display:block; font:18px var(--app-font-serif); margin-bottom:6px; }
+.room-reveal-text p { margin:0; font-size:12px; line-height:1.7; color:#cdc0a4; }
+.room-reveal-close { position:absolute; top:8px; right:8px; background:rgba(20,30,32,.7); color:#f2e8d2; }
+@keyframes roomRevealIn { 0% { opacity:0; transform:scale(.97); } 100% { opacity:1; transform:scale(1); } }
 .title-screen { min-height: 100dvh; display: grid; grid-template-columns: minmax(350px, 39%) 1fr; position: relative; }
 .title-copy { padding: clamp(32px, 6vw, 92px); background: #f2e8d2; color: #203137; display:flex; flex-direction:column; justify-content:space-between; position:relative; z-index:2; }
 .title-copy:after { content:""; position:absolute; right:-22px; top:0; bottom:0; width:44px; opacity:.45; background: repeating-linear-gradient(90deg, transparent 0 5px, rgba(31,48,53,.13) 6px 7px, transparent 8px 13px); }
