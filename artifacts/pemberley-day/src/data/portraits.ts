@@ -27,6 +27,24 @@ export function portraitUrl(id: string, expression: PortraitExpression = 'calm')
   return byKey.get(id) ?? null;
 }
 
+// Canvas 描画用の画像キャッシュ。読み込み前は null を返し、
+// 読み込み完了後のフレームから実体を返す（毎フレーム new Image しない）。
+const imageCache = new Map<string, HTMLImageElement>();
+
+/** 芝生を歩く人物などに貼る顔画像。未ロードなら null（次フレーム以降で差し替わる）。 */
+export function portraitImage(id: string, expression: PortraitExpression = 'calm'): HTMLImageElement | null {
+  const url = portraitUrl(id, expression);
+  if (!url) return null;
+  let img = imageCache.get(url);
+  if (!img) {
+    img = new Image();
+    img.decoding = 'async';
+    img.src = url;
+    imageCache.set(url, img);
+  }
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+
 /** その人物の差し込み画像が1枚でもあるか。 */
 export function hasPortrait(id: string): boolean {
   if (byKey.has(id)) return true;

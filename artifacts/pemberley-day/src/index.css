@@ -125,6 +125,8 @@
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes breathe { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 @keyframes pulseDot { 0%,100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.32); opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .9s linear infinite; }
 .pulse-dot { animation: pulseDot 2.2s ease-in-out infinite; }
 .estate-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; filter: saturate(.86) contrast(.94) sepia(.04); touch-action:none; }
 .room-transition { position:absolute; inset:0; z-index:8; pointer-events:none; background:#17262c; animation: roomTransition .3s ease-in-out both; }.room-transition + .interaction-prompt { z-index:2; }

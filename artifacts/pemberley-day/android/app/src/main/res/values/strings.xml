@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">A Day at Pemberley</string>
+    <string name="title_activity_main">A Day at Pemberley</string>
+    <string name="package_name">com.tairasakakibara.pemberleyday</string>
+    <string name="custom_url_scheme">com.tairasakakibara.pemberleyday</string>
+</resources>
