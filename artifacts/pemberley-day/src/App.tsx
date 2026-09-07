@@ -12,7 +12,8 @@ import { PaperTextureGenerator, type GeneratedPaperTexture } from './visuals/Pap
 import { AtmosphericFog } from './visuals/AtmosphericFog';
 import { drawEstate, type EstateFigure, type EstateFigureKind } from './visuals/EstateScene';
 import { composeDiary, type DiaryProse } from './narrative/diary';
-import { TourSystem, tourRooms, type TourRoomId } from './systems/TourSystem';
+import { TourSystem, tourRooms, type TourRoomId, type TourObservation } from './systems/TourSystem';
+import { drawRoom } from './visuals/RoomScene';
 import { letters, type DayModifier } from './data/letters';
 import { type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
 import { CharacterPortrait } from './components/CharacterPortrait';
@@ -590,6 +591,50 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
   return <canvas ref={canvasRef} className="estate-canvas" onWheel={onWheel} onClick={onClick} aria-label="Playable illustrated 3D view of Pemberley estate" />;
 }
 
+// 見学中の部屋を、その場でひらく一枚絵カード（水彩調）として見せる。
+function RoomRevealCard({ observation, roomName, language, onDismiss }: { observation: TourObservation; roomName: LocalizedText; language: Language; onDismiss: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let frame = 0;
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      canvas.width = Math.floor(rect.width * ratio);
+      canvas.height = Math.floor(rect.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    resize();
+    const start = performance.now();
+    const draw = (now: number) => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (w && h) drawRoom({ ctx, width: w, height: h, roomId: observation.roomId, band: observation.band, t: (now - start) / 1000 });
+      frame = requestAnimationFrame(draw);
+    };
+    frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [observation.roomId, observation.band]);
+
+  return (
+    <div className="room-reveal" role="dialog" aria-label={localized(roomName, language)} onClick={onDismiss}>
+      <div className="room-reveal-card" onClick={event => event.stopPropagation()}>
+        <canvas ref={canvasRef} className="room-reveal-canvas" />
+        <div className="room-reveal-text">
+          <strong>{localized(roomName, language)}</strong>
+          <p>“{localized(observation.line, language)}”</p>
+        </div>
+        <button className="icon-button room-reveal-close" aria-label="Close" onClick={onDismiss}><X size={15} /></button>
+      </div>
+    </div>
+  );
+}
+
 function TitleScreen({ language, setLanguage, onStart, diaryEntries, onOpenDiary, diaryTriggerRef, taskCount }: { language: Language; setLanguage: (value: Language) => void; onStart: () => void; diaryEntries: DiaryEntry[]; onOpenDiary: () => void; diaryTriggerRef: RefObject<HTMLButtonElement | null>; taskCount: number }) {
   const t = (key: string) => translations[language][key] || translations.en[key] || key;
   const diaryEntry = diaryEntries[diaryEntries.length - 1];
@@ -693,6 +738,8 @@ function App() {
   const tourSystemRef = useRef(new TourSystem());
   const [tourReadiness, setTourReadiness] = useState<Record<TourRoomId, number>>(() => ({ ...tourSystemRef.current.readiness }));
   const [tourRoomId, setTourRoomId] = useState<TourRoomId | null>(null);
+  const [roomReveal, setRoomReveal] = useState<TourObservation | null>(null);
+  const roomRevealTimeoutRef = useRef(0);
   const tourProcessedRef = useRef(-1);
   const tourSettledRef = useRef(false);
   const [emergencies, setEmergencies] = useState<EmergencyEvent[]>([]);
@@ -945,7 +992,12 @@ function App() {
     const observation = tour.advance(minutes, liveFocuses, busy);
     setTourReadiness({ ...tour.readiness });
     setTourRoomId(tour.currentRoom?.id ?? null);
-    if (observation) announce(observation.line, observation.band === 'wanting' ? 'warning' : 'report', `tour-${observation.roomId}-${observation.band}`);
+    if (observation) {
+      announce(observation.line, observation.band === 'wanting' ? 'warning' : 'report', `tour-${observation.roomId}-${observation.band}`);
+      setRoomReveal(observation);
+      window.clearTimeout(roomRevealTimeoutRef.current);
+      roomRevealTimeoutRef.current = window.setTimeout(() => setRoomReveal(null), 6000);
+    }
     const impression = tour.settledImpression;
     if (impression !== null && !tourSettledRef.current) {
       tourSettledRef.current = true;
@@ -1165,6 +1217,7 @@ function App() {
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
            <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
            {roomFade && <div className="room-transition" aria-hidden="true" />}
+           {roomReveal && <RoomRevealCard observation={roomReveal} roomName={tourRooms.find(room => room.id === roomReveal.roomId)!.name} language={language} onDismiss={() => { window.clearTimeout(roomRevealTimeoutRef.current); setRoomReveal(null); }} />}
            {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
            <button className="touch-action" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); interact(); }} aria-label={t('interact')}>E</button>
