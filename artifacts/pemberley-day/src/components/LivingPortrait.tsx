@@ -32,6 +32,12 @@ function hash(text: string): number {
   return Math.abs(h);
 }
 
+// キャラクター設定資料（八面図）に基づく、特定人物の髪色／ベスト色の上書き
+const PORTRAIT_OVERRIDES: Record<string, { hair?: string; hairLit?: string; waistcoat?: string }> = {
+  darcy: { hair: '#3c2c1e', hairLit: '#7a5c3c', waistcoat: '#b7a05a' },
+  'elizabeth-bennet': { hair: '#4f3626', hairLit: '#8a6247' },
+};
+
 // 口の形（上唇/下唇の稜線）
 const MOUTHS: Record<PortraitExpression, string> = {
   calm: 'M24 45.5 Q30 47.6 36 45.5 Q30 49 24 45.5',
@@ -61,10 +67,12 @@ export function LivingPortrait({ seed, kind, color, expression = 'calm', size = 
   const ink = mix(color, '#241d16', 0.5);
   const skin = mix('#e9d8bd', color, 0.06);
   const skinShadow = mix(skin, '#7c5a44', 0.5);
-  const hair = kind === 'lady'
+  const override = PORTRAIT_OVERRIDES[seed];
+  const hair = override?.hair ?? (kind === 'lady'
     ? mix(color, '#2e2118', 0.68)
-    : mix('#3b2c20', ink, 0.35);
-  const hairLit = mix(hair, '#c9a26a', 0.4);
+    : mix('#3b2c20', ink, 0.35));
+  const hairLit = override?.hairLit ?? mix(hair, '#c9a26a', 0.4);
+  const waistcoat = override?.waistcoat;
   const [browL, browR, lidDrop] = BROWS[expression];
   const mouth = MOUTHS[expression];
   const cheeks = expression === 'pleased';
@@ -119,8 +127,11 @@ export function LivingPortrait({ seed, kind, color, expression = 'calm', size = 
               // 白いフィシュ（胸元の布）
               <path d="M20 46 Q30 60 40 46 Q34 45 30 41 Q26 45 20 46 Z" fill={mix(skin, '#fffaf0', 0.55)} opacity="0.92" />
             ) : (
-              // 高い襟＋白クラヴァット
+              // 高い襟＋白クラヴァット（＋ベスト、上書き指定があれば）
               <>
+                {waistcoat && (
+                  <path d="M23 46 L27 63 L30 48 L33 63 L37 46 Q30 51 23 46 Z" fill={waistcoat} />
+                )}
                 <path d="M22 44 L26 62 L30 46 L34 62 L38 44 Q30 40 22 44 Z" fill={mix('#f4ecda', skin, 0.15)} />
                 <path d="M24 43 Q30 47 36 43 L38 40 Q30 44 22 40 Z" fill={mix(cloth, '#ffffff', 0.14)} />
               </>

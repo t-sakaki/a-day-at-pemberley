@@ -52,7 +52,7 @@ export const guests: GuestTemplate[] = [
     nameJa: 'エリザベス・ベネット嬢',
     title: 'A visitor from Hertfordshire',
     titleJa: 'ハートフォードシャーからの来訪者',
-    color: '#c98b6a',
+    color: '#e7dab8',
     preferences: ['portraits', 'garden', 'perfect order'],
     arrivalLine: {
       en: 'Miss Bennet has come in with her aunt and uncle, on the understanding that the family is away from home.',
@@ -78,7 +78,7 @@ export const guests: GuestTemplate[] = [
     nameJa: 'ダーシー氏',
     title: 'The master of Pemberley, returned a day early',
     titleJa: 'ペンバリーの主人、予定より一日早い帰館',
-    color: '#3f4a63',
+    color: '#31432f',
     preferences: ['perfect order', 'quiet', 'portraits'],
     arrivalLine: bi(
       'Mr. Darcy is come home before he was looked for, and has gone straight down to the visitors on the lawn.',
