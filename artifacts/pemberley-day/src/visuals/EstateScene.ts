@@ -55,9 +55,9 @@ export type EstateSceneInput = {
 type Pt = { x: number; y: number };
 
 // キャラクター設定資料（八面図）に基づく、特定人物の髪色／ベスト色の上書き
-const FIGURE_OVERRIDES: Record<string, { hair?: string; waistcoat?: string; noHat?: boolean; curls?: boolean }> = {
-  darcy: { hair: '#3c2c1e', waistcoat: '#b7a05a', noHat: true },
-  'elizabeth-bennet': { hair: '#4f3626', curls: true },
+const FIGURE_OVERRIDES: Record<string, { hair?: string; waistcoat?: string }> = {
+  darcy: { hair: '#3c2c1e', waistcoat: '#b7a05a' },
+  'elizabeth-bennet': { hair: '#4f3626' },
 };
 
 // 座標に紐づく決定的な擬似乱数（毎フレーム同じ値＝ちらつかない）。
@@ -371,49 +371,23 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
 
   // 髪・帽子（前面）
   if (fig.kind === 'lady') {
-    if (override?.curls) {
-      // 特徴的な巻き毛：中央分けの前髪＋こめかみの巻き毛（帽子はかぶらない）
-      ctx.fillStyle = hairHex;
-      ctx.beginPath();
-      ctx.arc(0, hcy, hr * 1.06, Math.PI * 1.06, Math.PI * 1.94);
-      ctx.fill();
-      const curlSide = (dir: 1 | -1) => {
-        const bx = dir * hr * 0.92;
-        for (let k = 0; k < 3; k += 1) {
-          ctx.beginPath();
-          ctx.arc(bx, hcy - hr * 0.1 + k * hr * 0.34, hr * 0.24, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      };
-      curlSide(-1);
-      curlSide(1);
-    } else {
-      // ボンネット
-      ctx.fillStyle = fig.color;
-      ctx.beginPath();
-      ctx.arc(0, hcy - hr * 0.15, hr * 1.2, Math.PI * 1.02, Math.PI * 2.02);
-      ctx.fill();
-      ctx.fillStyle = mixHex(fig.color, '#ffffff', 0.25);
-      ctx.beginPath();
-      ctx.ellipse(0, hcy - hr * 0.15, hr * 1.2, hr * 0.5, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
-    }
+    // ボンネット
+    ctx.fillStyle = fig.color;
+    ctx.beginPath();
+    ctx.arc(0, hcy - hr * 0.15, hr * 1.2, Math.PI * 1.02, Math.PI * 2.02);
+    ctx.fill();
+    ctx.fillStyle = mixHex(fig.color, '#ffffff', 0.25);
+    ctx.beginPath();
+    ctx.ellipse(0, hcy - hr * 0.15, hr * 1.2, hr * 0.5, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
   } else {
     // 前髪
     ctx.fillStyle = hairHex;
     ctx.beginPath();
     ctx.arc(0, hcy, hr * 1.02, Math.PI * 1.08, Math.PI * 1.92);
     ctx.fill();
-    if (override?.noHat) {
-      // 特徴的な髪：帽子を脱ぎ、額にかかる房を一筋見せる
-      ctx.fillStyle = hairHex;
-      ctx.beginPath();
-      ctx.moveTo(-hr * 0.3, hcy - hr * 0.86);
-      ctx.quadraticCurveTo(-hr * 0.1, hcy - hr * 1.08, hr * 0.18, hcy - hr * 0.82);
-      ctx.quadraticCurveTo(-hr * 0.02, hcy - hr * 0.92, -hr * 0.3, hcy - hr * 0.86);
-      ctx.fill();
-    } else if (fig.kind === 'gent') {
-      // シルクハット（執事はかぶらない）
+    // シルクハット（執事はかぶらない）
+    if (fig.kind === 'gent') {
       ctx.fillStyle = ink;
       ctx.fillRect(-hr * 1.15, hcy - hr * 0.95, hr * 2.3, hr * 0.3);
       ctx.fillRect(-hr * 0.8, hcy - hr * 2.2, hr * 1.6, hr * 1.35);
