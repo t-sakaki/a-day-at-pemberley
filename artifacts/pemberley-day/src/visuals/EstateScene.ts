@@ -40,6 +40,12 @@ export type EstateSceneInput = {
 
 type Pt = { x: number; y: number };
 
+// キャラクター設定資料（八面図）に基づく、特定人物の髪色／ベスト色の上書き
+const FIGURE_OVERRIDES: Record<string, { hair?: string; waistcoat?: string }> = {
+  darcy: { hair: '#3c2c1e', waistcoat: '#b7a05a' },
+  'elizabeth-bennet': { hair: '#4f3626' },
+};
+
 // 座標に紐づく決定的な擬似乱数（毎フレーム同じ値＝ちらつかない）。
 function noise(seed: number): number {
   const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
@@ -170,7 +176,8 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   ctx.translate(x, y);
   const ink = mixHex(fig.color, '#2a241d', 0.35);
   const skin = '#e7d6bd';
-  const hairHex = fig.kind === 'lady' ? mixHex(fig.color, '#3a2c20', 0.62) : mixHex('#3a2f24', ink, 0.35);
+  const override = FIGURE_OVERRIDES[fig.id.replace(/^visitor-/, '')];
+  const hairHex = override?.hair ?? (fig.kind === 'lady' ? mixHex(fig.color, '#3a2c20', 0.62) : mixHex('#3a2f24', ink, 0.35));
   // 頭の中心と半径（顔を描くので大きめに）
   const hr = s * 0.23;
   const hcy = fig.kind === 'lady' ? -s * 0.93 : -s * 0.9;
@@ -215,6 +222,19 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
     ctx.lineTo(-s * 0.16, -s * 0.28);
     ctx.closePath();
     ctx.fill();
+    // ベスト（上書き指定があれば、燕尾服の前を少し見せる）
+    if (override?.waistcoat) {
+      ctx.fillStyle = override.waistcoat;
+      ctx.globalAlpha = 0.95;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.08, -s * 0.66);
+      ctx.lineTo(s * 0.08, -s * 0.66);
+      ctx.lineTo(s * 0.04, -s * 0.18);
+      ctx.lineTo(0, -s * 0.34);
+      ctx.lineTo(-s * 0.04, -s * 0.18);
+      ctx.closePath();
+      ctx.fill();
+    }
     // 首・襟（白いクラヴァット）
     ctx.fillStyle = skin;
     ctx.fillRect(-s * 0.05, -s * 0.78, s * 0.1, s * 0.12);

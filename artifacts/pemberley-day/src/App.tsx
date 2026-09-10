@@ -1187,7 +1187,7 @@ function App() {
               return <article className={`letter-card ${chosen !== undefined ? 'answered' : ''}`} key={letter.id}>
                 <div className="letter-from">
                   <span className="letter-sender">
-                    {letter.portraitId && <CharacterPortrait id={letter.portraitId} kind={letter.portraitId === 'lady-catherine' ? 'lady' : 'gent'} color={letter.portraitId === 'lady-catherine' ? '#7c6f92' : '#3f4a63'} size={38} />}
+                    {letter.portraitId && <CharacterPortrait id={letter.portraitId} kind={letter.portraitId === 'lady-catherine' ? 'lady' : 'gent'} color={letter.portraitId === 'lady-catherine' ? '#7c6f92' : '#31432f'} size={38} />}
                     {localized(letter.from, language)}
                   </span>
                   <button type="button" className="letter-read" aria-label={t('readAloud')} onClick={() => voiceRef.current?.play(`letter-${letter.id}`, language)}>
