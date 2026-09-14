@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LivingPortrait, type PortraitExpression, type PortraitKind } from './LivingPortrait';
 import { portraitUrl } from '../data/portraits';
+import { blenderPortraitUrl } from '../data/blenderCharacters';
 
 type Props = {
   id: string;
@@ -11,12 +12,13 @@ type Props = {
   title?: string;
 };
 
-// 差し込みの顔写真があればそれを、無ければ描き顔（LivingPortrait）を表示する。
+// Blender portrait → existing painting → drawn face. Failures are scoped to each URL.
 export function CharacterPortrait({ id, kind, color, expression = 'calm', size = 40, title }: Props) {
-  const url = portraitUrl(id, expression);
-  const [broken, setBroken] = useState(false);
+  const [failed, setFailed] = useState<Set<string>>(() => new Set());
+  const url = [blenderPortraitUrl(id, expression), portraitUrl(id, expression)]
+    .find((candidate): candidate is string => Boolean(candidate && !failed.has(candidate)));
 
-  if (url && !broken) {
+  if (url) {
     return (
       <img
         className="character-portrait"
@@ -27,7 +29,7 @@ export function CharacterPortrait({ id, kind, color, expression = 'calm', size =
         aria-hidden={title ? undefined : true}
         loading="lazy"
         draggable={false}
-        onError={() => setBroken(true)}
+        onError={() => setFailed(current => new Set(current).add(url))}
       />
     );
   }
