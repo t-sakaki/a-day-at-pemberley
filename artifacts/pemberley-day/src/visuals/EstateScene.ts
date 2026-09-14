@@ -4,6 +4,7 @@
 // 燕尾服の紳士）で描く。Canvas 2D のみ。WatercolorPass の前段で使う。
 
 import { drawBlenderEstate } from './BlenderEstate';
+import { drawBlenderCharacter } from './BlenderCharacter';
 
 export type EstateFigureKind = 'lady' | 'gent' | 'steward';
 
@@ -188,6 +189,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   // 影（歩行で伸縮）
   blob(ctx, at.x, at.y + s * 0.06, s * (0.42 - bob / s * 0.5), s * 0.14, 'rgba(30,42,36,0.28)', 0.5);
 
+  if (!drawBlenderCharacter(ctx, x, y, s, fig, now)) {
   ctx.save();
   ctx.translate(x, y);
   const ink = mixHex(fig.color, '#2a241d', 0.35);
@@ -397,6 +399,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, at: Pt, s: number, fig: Esta
   }
   } // end if(!hasPhoto)
   ctx.restore();
+  }
 
   // --- 感情マーク（小さくても伝わる漫画的な符号）---
   {
