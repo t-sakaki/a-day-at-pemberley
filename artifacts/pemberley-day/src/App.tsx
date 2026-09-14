@@ -18,6 +18,8 @@ import { letters, type DayModifier } from './data/letters';
 import { type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
 import { CharacterPortrait } from './components/CharacterPortrait';
 import { portraitImage } from './data/portraits';
+import { WalkableInterior } from './components/WalkableInterior';
+import type { InteriorRoomId } from './systems/InteriorNavigation';
 import { usePemberleyPro } from '@/hooks/usePemberleyPro';
 import { PemberleyProDialog } from '@/components/PemberleyProDialog';
 
@@ -366,7 +368,7 @@ const FIGURE_KIND: Record<string, EstateFigureKind> = {
 
 type Visitor = { id: string; kind: 'lady' | 'gent'; color: string; label: string; expression: PortraitExpression };
 
-function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, visitors, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival }: { mode: 'title' | 'game'; player: Point; hour?: number; language?: Language; figureExpressions?: Record<string, PortraitExpression>; visitors?: Visitor[]; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void }) {
+function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, visitors, onNotice, onWalk, staffDestinations, emergencyActive, onStaffArrival, obscured = false }: { mode: 'title' | 'game'; player: Point; hour?: number; language?: Language; figureExpressions?: Record<string, PortraitExpression>; visitors?: Visitor[]; onNotice?: (text: string) => void; onWalk?: () => void; staffDestinations?: Record<string, Point>; emergencyActive?: boolean; onStaffArrival?: (staffId: string) => void; obscured?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(mode === 'title' ? 1.04 : 1);
   const staffMotionRef = useRef<Record<string, Point>>({});
@@ -376,8 +378,8 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
   const arrivedRef = useRef<Set<string>>(new Set());
   const paperTextureRef = useRef<GeneratedPaperTexture | null>(null);
   const fogRef = useRef<AtmosphericFog>(new AtmosphericFog());
-  const propsRef = useRef({ mode, player, hour, language, figureExpressions, visitors, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk });
-  propsRef.current = { mode, player, hour, language, figureExpressions, visitors, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk };
+  const propsRef = useRef({ mode, player, hour, language, figureExpressions, visitors, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk, obscured });
+  propsRef.current = { mode, player, hour, language, figureExpressions, visitors, staffDestinations, emergencyActive, onStaffArrival, onNotice, onWalk, obscured };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -416,7 +418,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
       const h = canvas.clientHeight;
       if (!w || !h) { frame = requestAnimationFrame(draw); return; }
       const t = now / 1000;
-      context.clearRect(0, 0, w, h);
+      if (!currentProps.obscured) context.clearRect(0, 0, w, h);
       const isPhone = w < 700;
       const zoom = zoomRef.current;
       // スマホは1ワールド単位あたりのピクセルを大きく取り、風景と人物を近づける。
@@ -547,6 +549,8 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
       // 館の時計があればその時刻の空に。無ければ朝の光。
       const gameHour = typeof currentProps.hour === 'number' ? currentProps.hour : 9;
       fogRef.current.update(gameHour, 1 / 60);
+      // The indoor canvas fully covers this view; staff arrival callbacks still run above.
+      if (currentProps.obscured) { frame = requestAnimationFrame(draw); return; }
       drawEstate({
         ctx: context,
         w,
@@ -732,7 +736,6 @@ function App() {
   const [absentStaff, setAbsentStaff] = useState<string[]>([]);
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
-  const [roomFade, setRoomFade] = useState(false);
   const eventSystemRef = useRef(new EventSystem());
   const guestManagerRef = useRef(new GuestManager());
   const tourSystemRef = useRef(new TourSystem());
@@ -742,6 +745,9 @@ function App() {
   const roomRevealTimeoutRef = useRef(0);
   const roomPreviewRef = useRef(false);
   const roomTriggerRef = useRef<HTMLElement | null>(null);
+  const [activeRoom, setActiveRoom] = useState<InteriorRoomId | null>(null);
+  const activeRoomRef = useRef<InteriorRoomId | null>(null);
+  const roomActionRef = useRef<(() => void) | null>(null);
   const dismissRoom = useCallback(() => {
     window.clearTimeout(roomRevealTimeoutRef.current);
     roomPreviewRef.current = false;
@@ -752,6 +758,24 @@ function App() {
     if (phase !== 'game') dismissRoom();
     return () => window.clearTimeout(roomRevealTimeoutRef.current);
   }, [phase, dismissRoom]);
+  const enterRoom = useCallback((room: InteriorRoomId) => {
+    dismissRoom();
+    roomPreviewRef.current = true;
+    keysRef.current = {};
+    joystickRef.current = { x: 0, y: 0 };
+    activeRoomRef.current = room;
+    setActiveRoom(room);
+    setLeftOpen(false); setRightOpen(false);
+  }, [dismissRoom]);
+  const exitRoom = useCallback(() => {
+    activeRoomRef.current = null; setActiveRoom(null);
+    roomPreviewRef.current = false;
+    keysRef.current = {}; joystickRef.current = { x: 0, y: 0 };
+    playerRef.current = { x: -.5, y: 3.8 }; setPlayer(playerRef.current);
+  }, []);
+  useEffect(() => {
+    if (phase !== 'game') { activeRoomRef.current = null; setActiveRoom(null); }
+  }, [phase]);
   const tourProcessedRef = useRef(-1);
   const tourSettledRef = useRef(false);
   const [emergencies, setEmergencies] = useState<EmergencyEvent[]>([]);
@@ -765,8 +789,6 @@ function App() {
   const emergencySpawnedRef = useRef<Set<string>>(new Set());
   const skipEventTimelineRef = useRef(false);
   const skipEmergencyTimelineRef = useRef(false);
-  const roomTransitionRef = useRef(false);
-  const roomEntryLatchRef = useRef(false);
 
   useEffect(() => {
     if (phase === 'game' && guestStates.length === 0) setGuestStates(guestManagerRef.current.reset(dayNumber));
@@ -1006,7 +1028,7 @@ function App() {
     setTourRoomId(tour.currentRoom?.id ?? null);
     if (observation) {
       announce(observation.line, observation.band === 'wanting' ? 'warning' : 'report', `tour-${observation.roomId}-${observation.band}`);
-      if (!roomPreviewRef.current) {
+      if (!roomPreviewRef.current && !activeRoomRef.current) {
         roomTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setRoomReveal(observation);
         window.clearTimeout(roomRevealTimeoutRef.current);
@@ -1027,13 +1049,17 @@ function App() {
   useEffect(() => {
     if (phase !== 'game') return;
     const onKey = (event: KeyboardEvent) => {
-      if (roomReveal) return;
+      if (roomReveal || activeRoomRef.current || document.querySelector('[role="dialog"]')) return;
+      if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable="true"]')) return;
       keysRef.current[event.key.toLowerCase()] = event.type === 'keydown';
       if (event.key.toLowerCase() === 'e' && event.type === 'keydown') {
-        if (nearbyEmergency) {
+        if (Math.hypot(playerRef.current.x + .5, playerRef.current.y - 2.6) < 1.8) {
+          enterRoom('hall');
+        } else if (nearbyEmergency) {
           resolveEmergency(nearbyEmergency);
         } else if (nearbyRoom) {
-          tendRoom(nearbyRoom.id);
+          if (nearbyRoom.id === 'grounds') tendRoom(nearbyRoom.id);
+          else enterRoom(nearbyRoom.id);
         } else if (nearby) {
           setCompleted(current => current.includes(nearby.label) ? current : [...current, nearby.label]);
           setReputation(value => Math.min(100, value + (completed.includes(nearby.label) ? 0 : 2)));
@@ -1047,11 +1073,23 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKey);
+    const clearKeys = () => { keysRef.current = {}; if (!activeRoomRef.current) joystickRef.current = { x: 0, y: 0 }; };
+    window.addEventListener('blur', clearKeys);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); window.removeEventListener('blur', clearKeys); };
+  }, [phase, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length, roomReveal, enterRoom]);
+
+  useEffect(() => {
+    if (phase !== 'game') return;
     let raf = 0;
     let last = performance.now();
     const move = (now: number) => {
       const delta = Math.min((now - last) / 1000, .05); last = now;
-      if (roomReveal) {
+      if (activeRoomRef.current) {
+        // The indoor controller now owns the shared movement pad.
+        raf = requestAnimationFrame(move);
+        return;
+      }
+      if (roomReveal || document.querySelector('[role="dialog"]')) {
         keysRef.current = {};
         joystickRef.current = { x: 0, y: 0 };
         raf = requestAnimationFrame(move);
@@ -1067,19 +1105,11 @@ function App() {
        next.x += joystickRef.current.x * speed * delta;
        next.y += joystickRef.current.y * speed * delta;
       next.x = Math.max(-14, Math.min(14, next.x)); next.y = Math.max(-9, Math.min(14, next.y));
-        const atHouseEntrance = next.y <= -2.7 && Math.abs(next.x) < 2.5;
-        const enteringHouse = playerRef.current.y > -2.7 && atHouseEntrance;
-        if (!atHouseEntrance) roomEntryLatchRef.current = false;
-        if (enteringHouse && !roomTransitionRef.current && !roomEntryLatchRef.current) {
-          roomEntryLatchRef.current = true;
-         roomTransitionRef.current = true;
-         setRoomFade(true);
-         window.setTimeout(() => {
-           playerRef.current = { ...playerRef.current, y: playerRef.current.y - 1.5 };
-           setPlayer(playerRef.current);
-         }, 150);
-         window.setTimeout(() => { roomTransitionRef.current = false; setRoomFade(false); }, 300);
-       }
+      if (playerRef.current.y > 2.65 && next.y <= 2.65 && Math.abs(next.x + .5) < 1.15) {
+        enterRoom('hall');
+        raf = requestAnimationFrame(move);
+        return;
+      }
       if (next.x !== playerRef.current.x || next.y !== playerRef.current.y) {
         playerRef.current = next;
         setPlayer(next);
@@ -1087,8 +1117,8 @@ function App() {
       raf = requestAnimationFrame(move);
     };
     raf = requestAnimationFrame(move);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); };
-  }, [phase, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length, roomReveal]);
+    return () => { cancelAnimationFrame(raf); };
+  }, [phase, emergencies.length, roomReveal, enterRoom]);
 
   useEffect(() => {
     if (phase !== 'game') return;
@@ -1097,6 +1127,7 @@ function App() {
   }, [phase]);
 
   const startGame = () => {
+    activeRoomRef.current = null; setActiveRoom(null); dismissRoom();
     eventSystemRef.current.reset();
     emergencySpawnedRef.current.clear();
     setEmergencies([]);
@@ -1128,12 +1159,15 @@ function App() {
     audioRef.current?.ringBell();
   };
   const interact = () => {
+    if (activeRoomRef.current) { roomActionRef.current?.(); return; }
+    if (Math.hypot(playerRef.current.x + .5, playerRef.current.y - 2.6) < 1.8) { enterRoom('hall'); return; }
     if (nearbyEmergency) {
       resolveEmergency(nearbyEmergency);
       return;
     }
     if (nearbyRoom) {
-      tendRoom(nearbyRoom.id);
+      if (nearbyRoom.id === 'grounds') tendRoom(nearbyRoom.id);
+      else enterRoom(nearbyRoom.id);
       return;
     }
     if (!nearby) {
@@ -1166,6 +1200,7 @@ function App() {
     setDiaryOpen(true);
   };
   function resetDay() {
+      activeRoomRef.current = null; setActiveRoom(null); dismissRoom();
       skipEventTimelineRef.current = true;
       skipEmergencyTimelineRef.current = true;
       eventSystemRef.current.reset(); emergencySpawnedRef.current.clear(); setEmergencies([]); setGuestStates(guestManagerRef.current.reset(dayNumber + 1)); setStaffMorale(86);
@@ -1224,6 +1259,7 @@ function App() {
                const value = Math.round(tourReadiness[room.id]);
                const showing = tourRoomId === room.id;
                return <button type="button" className={`tour-room ${showing ? 'showing' : ''}`} key={room.id} onClick={event => {
+                 if (room.id !== 'grounds') { enterRoom(room.id); return; }
                  roomTriggerRef.current = event.currentTarget;
                  roomPreviewRef.current = true;
                  window.clearTimeout(roomRevealTimeoutRef.current);
@@ -1243,11 +1279,17 @@ function App() {
            <button className="outline-button" style={{ width: '100%', marginTop: 9, color: '#c8d5c8', borderColor: '#526b62' }} onClick={finishDay}><BookOpen size={14} style={{ verticalAlign: 'middle', marginRight: 7 }} /> {t('closeDay')}</button>
         </aside>
         <main className="view-wrap" onClick={() => { if (!roomReveal) setLeftOpen(false); }}>
-           <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
-           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
-           {roomFade && <div className="room-transition" aria-hidden="true" />}
+           <div className="view-hud"><div className="location-badge"><strong>{activeRoom === 'hall' ? (language === 'ja' ? '大階段のホール' : 'The grand staircase hall') : activeRoom ? localized(tourRooms.find(room => room.id === activeRoom)!.name, language) : t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />E &nbsp; {t('interact')}</div></div>
+           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} obscured={Boolean(activeRoom)} />
+           {activeRoom && <WalkableInterior key={activeRoom} room={activeRoom} language={language}
+             name={activeRoom === 'hall' ? (language === 'ja' ? '大階段のホール' : 'The grand staircase hall') : localized(tourRooms.find(room => room.id === activeRoom)!.name, language)}
+             names={{...Object.fromEntries(tourRooms.filter(room => room.id !== 'grounds').map(room => [room.id, localized(room.name, language)])),hall:language === 'ja' ? '大階段のホール' : 'The grand staircase hall'} as Record<InteriorRoomId, string>}
+             band={activeRoom === 'hall' ? 'warm' : tourReadiness[activeRoom] >= 75 ? 'warm' : tourReadiness[activeRoom] >= 45 ? 'civil' : 'wanting'}
+             joystickRef={joystickRef} actionRef={roomActionRef} blocked={settingsOpen || pianoOpen || diaryOpen || lettersOpen || proOpen}
+             onExit={exitRoom} onNavigate={enterRoom} onTend={() => activeRoom === 'hall' ? enterRoom('gallery') : tendRoom(activeRoom)} />}
+           {!activeRoom && <button className="house-entry-button" onClick={() => enterRoom('hall')}>{language === 'ja' ? '館に入る' : 'Enter the house'}</button>}
            {roomReveal && <RoomRevealCard observation={roomReveal} roomName={tourRooms.find(room => room.id === roomReveal.roomId)!.name} language={language} onDismiss={dismissRoom} triggerRef={roomTriggerRef} />}
-           {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
+           {!activeRoom && (nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{nearbyRoom.id === 'grounds' ? t('tend') : (language === 'ja' ? '入室' : 'Enter')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>)}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
            <button className="touch-action" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); interact(); }} aria-label={t('interact')}>E</button>
            <button ref={pianoTriggerRef} className="piano-launch" onClick={() => { setPianoOpen(true); audioRef.current?.start(); }} aria-label="Open piano">♫</button>

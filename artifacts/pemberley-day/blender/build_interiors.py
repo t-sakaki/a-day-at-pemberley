@@ -8,12 +8,13 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT))
 from interior_tools import *
+from ornate_interiors import enrich
 
 OUT=ROOT.parent/'public'/'blender'/'interiors'
 OUT.mkdir(parents=True,exist_ok=True)
 
 def palette(kind):
-    wall={'gallery':(.28,.37,.29),'music':(.43,.55,.52),'window':(.65,.56,.39)}[kind]
+    wall={'gallery':(.095,.20,.135),'music':(.12,.24,.28),'window':(.40,.23,.11)}[kind]
     return dict(wall=material('Painted plaster',wall,grain=True),
         ivory=material('Warm plaster mouldings',(.83,.77,.62)),
         wood=material('Figured mahogany',(.26,.095,.042),.34,grain=True),
@@ -185,6 +186,7 @@ def build(kind):
     m=palette(kind)
     shell(kind,m)
     {'gallery':gallery,'music':music,'window':window_room}[kind](m)
+    enrich(kind,m)
     if neglected and kind=='music':
         lid=bpy.data.objects['Open mahogany lid']
         lid.rotation_euler=(0,0,0)
