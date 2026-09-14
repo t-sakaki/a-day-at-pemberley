@@ -12,7 +12,7 @@ import { PaperTextureGenerator, type GeneratedPaperTexture } from './visuals/Pap
 import { AtmosphericFog } from './visuals/AtmosphericFog';
 import { drawEstate, type EstateFigure, type EstateFigureKind } from './visuals/EstateScene';
 import { composeDiary, type DiaryProse } from './narrative/diary';
-import { TourSystem, tourRooms, type TourRoomId, type TourObservation } from './systems/TourSystem';
+import { TourSystem, tourRooms, observations, type TourRoomId, type TourObservation } from './systems/TourSystem';
 import { drawRoom } from './visuals/RoomScene';
 import { letters, type DayModifier } from './data/letters';
 import { type PortraitExpression, type PortraitKind } from './components/LivingPortrait';
@@ -592,7 +592,7 @@ function EstateCanvas({ mode, player, hour, language = 'en', figureExpressions, 
 }
 
 // 見学中の部屋を、その場でひらく一枚絵カード（水彩調）として見せる。
-function RoomRevealCard({ observation, roomName, language, onDismiss }: { observation: TourObservation; roomName: LocalizedText; language: Language; onDismiss: () => void }) {
+function RoomRevealCard({ observation, roomName, language, onDismiss, triggerRef }: { observation: TourObservation; roomName: LocalizedText; language: Language; onDismiss: () => void; triggerRef: RefObject<HTMLElement | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -610,6 +610,8 @@ function RoomRevealCard({ observation, roomName, language, onDismiss }: { observ
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     };
     resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
     const start = performance.now();
     const draw = (now: number) => {
       const w = canvas.clientWidth;
@@ -618,20 +620,18 @@ function RoomRevealCard({ observation, roomName, language, onDismiss }: { observ
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   }, [observation.roomId, observation.band]);
 
   return (
-    <div className="room-reveal" role="dialog" aria-label={localized(roomName, language)} onClick={onDismiss}>
-      <div className="room-reveal-card" onClick={event => event.stopPropagation()}>
-        <canvas ref={canvasRef} className="room-reveal-canvas" />
+    <Dialog open triggerRef={triggerRef} onClose={onDismiss} className="room-reveal-card" label={localized(roomName, language)}>
+        <canvas ref={canvasRef} className="room-reveal-canvas" role="img" aria-label={localized(roomName, language)} />
         <div className="room-reveal-text">
           <strong>{localized(roomName, language)}</strong>
           <p>“{localized(observation.line, language)}”</p>
         </div>
-        <button className="icon-button room-reveal-close" aria-label="Close" onClick={onDismiss}><X size={15} /></button>
-      </div>
-    </div>
+        <button className="icon-button room-reveal-close" aria-label={translations[language].close} onClick={onDismiss}><X size={15} /></button>
+    </Dialog>
   );
 }
 
@@ -740,6 +740,18 @@ function App() {
   const [tourRoomId, setTourRoomId] = useState<TourRoomId | null>(null);
   const [roomReveal, setRoomReveal] = useState<TourObservation | null>(null);
   const roomRevealTimeoutRef = useRef(0);
+  const roomPreviewRef = useRef(false);
+  const roomTriggerRef = useRef<HTMLElement | null>(null);
+  const dismissRoom = useCallback(() => {
+    window.clearTimeout(roomRevealTimeoutRef.current);
+    roomPreviewRef.current = false;
+    setRoomReveal(null);
+  }, []);
+
+  useEffect(() => {
+    if (phase !== 'game') dismissRoom();
+    return () => window.clearTimeout(roomRevealTimeoutRef.current);
+  }, [phase, dismissRoom]);
   const tourProcessedRef = useRef(-1);
   const tourSettledRef = useRef(false);
   const [emergencies, setEmergencies] = useState<EmergencyEvent[]>([]);
@@ -994,9 +1006,12 @@ function App() {
     setTourRoomId(tour.currentRoom?.id ?? null);
     if (observation) {
       announce(observation.line, observation.band === 'wanting' ? 'warning' : 'report', `tour-${observation.roomId}-${observation.band}`);
-      setRoomReveal(observation);
-      window.clearTimeout(roomRevealTimeoutRef.current);
-      roomRevealTimeoutRef.current = window.setTimeout(() => setRoomReveal(null), 6000);
+      if (!roomPreviewRef.current) {
+        roomTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        setRoomReveal(observation);
+        window.clearTimeout(roomRevealTimeoutRef.current);
+        roomRevealTimeoutRef.current = window.setTimeout(() => setRoomReveal(null), 6000);
+      }
     }
     const impression = tour.settledImpression;
     if (impression !== null && !tourSettledRef.current) {
@@ -1012,6 +1027,7 @@ function App() {
   useEffect(() => {
     if (phase !== 'game') return;
     const onKey = (event: KeyboardEvent) => {
+      if (roomReveal) return;
       keysRef.current[event.key.toLowerCase()] = event.type === 'keydown';
       if (event.key.toLowerCase() === 'e' && event.type === 'keydown') {
         if (nearbyEmergency) {
@@ -1035,6 +1051,12 @@ function App() {
     let last = performance.now();
     const move = (now: number) => {
       const delta = Math.min((now - last) / 1000, .05); last = now;
+      if (roomReveal) {
+        keysRef.current = {};
+        joystickRef.current = { x: 0, y: 0 };
+        raf = requestAnimationFrame(move);
+        return;
+      }
       const keys = keysRef.current;
        const speed = 6 * (keys.shift || emergencies.length > 0 ? 1.5 : 1);
       const next = { ...playerRef.current };
@@ -1066,7 +1088,7 @@ function App() {
     };
     raf = requestAnimationFrame(move);
     return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); };
-  }, [phase, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length]);
+  }, [phase, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length, roomReveal]);
 
   useEffect(() => {
     if (phase !== 'game') return;
@@ -1201,10 +1223,17 @@ function App() {
              {tourRooms.map(room => {
                const value = Math.round(tourReadiness[room.id]);
                const showing = tourRoomId === room.id;
-               return <div className={`tour-room ${showing ? 'showing' : ''}`} key={room.id}>
+               return <button type="button" className={`tour-room ${showing ? 'showing' : ''}`} key={room.id} onClick={event => {
+                 roomTriggerRef.current = event.currentTarget;
+                 roomPreviewRef.current = true;
+                 window.clearTimeout(roomRevealTimeoutRef.current);
+                 const readiness = tourReadiness[room.id];
+                 const band = readiness >= 75 ? 'warm' : readiness >= 45 ? 'civil' : 'wanting';
+                 setRoomReveal({ roomId: room.id, band, line: observations[room.id][band] });
+               }}>
                  <div className="tour-room-top"><b>{localized(room.name, language)}</b><span className="mono">{showing ? t('tourShowing') : `${value}%`}</span></div>
                  <div className="progress"><i style={{ width: `${value}%` }} /></div>
-               </div>;
+               </button>;
              })}
            </div>
            {tourRoomId === null && <p className="tour-wait">{t('tourWaiting')}</p>}
@@ -1213,17 +1242,17 @@ function App() {
            <button className="bell-button" onClick={ringBell}><Bell size={15} /> {t('ring')}</button>
            <button className="outline-button" style={{ width: '100%', marginTop: 9, color: '#c8d5c8', borderColor: '#526b62' }} onClick={finishDay}><BookOpen size={14} style={{ verticalAlign: 'middle', marginRight: 7 }} /> {t('closeDay')}</button>
         </aside>
-        <main className="view-wrap" onClick={() => setLeftOpen(false)}>
+        <main className="view-wrap" onClick={() => { if (!roomReveal) setLeftOpen(false); }}>
            <div className="view-hud"><div className="location-badge"><strong>{t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />Mouse wheel &nbsp; {t('adjust')} · E &nbsp; {t('interact')}</div></div>
            <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} />
            {roomFade && <div className="room-transition" aria-hidden="true" />}
-           {roomReveal && <RoomRevealCard observation={roomReveal} roomName={tourRooms.find(room => room.id === roomReveal.roomId)!.name} language={language} onDismiss={() => { window.clearTimeout(roomRevealTimeoutRef.current); setRoomReveal(null); }} />}
+           {roomReveal && <RoomRevealCard observation={roomReveal} roomName={tourRooms.find(room => room.id === roomReveal.roomId)!.name} language={language} onDismiss={dismissRoom} triggerRef={roomTriggerRef} />}
            {nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{t('tend')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
            <button className="touch-action" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); interact(); }} aria-label={t('interact')}>E</button>
            <button ref={pianoTriggerRef} className="piano-launch" onClick={() => { setPianoOpen(true); audioRef.current?.start(); }} aria-label="Open piano">♫</button>
           <div className="minimap"><div className="minimap-inner"><div className="mini-lake" /><div className="mini-house" /><div className="mini-player" style={{ left: `${50 + player.x * 2.2}%`, top: `${42 + player.y * 2.2}%` }} />{staff.map((item, i) => <span key={item.id} style={{ position: 'absolute', width: 4, height: 4, borderRadius: '50%', background: item.color, left: `${47 + item.home.x * 2.2}%`, top: `${43 + item.home.y * 2.2}%` }} />)}</div></div>
-          <button className="icon-button" style={{ position: 'absolute', zIndex: 4, bottom: 18, left: 17, background: 'rgba(27,45,47,.8)' }} onClick={(event) => { event.stopPropagation(); setLeftOpen(value => !value); }} aria-label="Open task panel"><Menu size={17} /></button>
+          <button className="icon-button task-panel-toggle" onClick={(event) => { event.stopPropagation(); setLeftOpen(value => !value); }} aria-label="Open task panel"><Menu size={17} /></button>
         </main>
         <aside className={`panel right-panel ${rightOpen ? 'open' : ''}`}>
            <div className="panel-title"><strong>{t('household')}</strong><span>5 {t('onDuty')}</span></div>
