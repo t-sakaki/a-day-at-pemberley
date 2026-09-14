@@ -3,6 +3,8 @@
 // 人物は多角形の棒ではなく、リージェンシー期の装いのシルエット（ボンネットの淑女／
 // 燕尾服の紳士）で描く。Canvas 2D のみ。WatercolorPass の前段で使う。
 
+import { drawBlenderEstate } from './BlenderEstate';
+
 export type EstateFigureKind = 'lady' | 'gent' | 'steward';
 
 export type FigureExpression = 'calm' | 'pleased' | 'concerned' | 'busy' | 'tense';
@@ -486,6 +488,7 @@ export function drawEstate(input: EstateSceneInput): void {
   sky.addColorStop(1, bottom);
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
+  if (!drawBlenderEstate(input)) {
   // --- 遠くの丘（地平のかわりに、館の奥の空を埋める）---
   const hillBase = project(0, -13, 0).y;
   for (let k = 0; k < 4; k += 1) {
@@ -662,6 +665,8 @@ export function drawEstate(input: EstateSceneInput): void {
     const p = project(gx, gy, 0);
     paintTree(ctx, p, scale * (1.05 + noise(i) * 0.45), i * 7.3, (noise(i + 3) - 0.5) * scale * 0.5);
   });
+
+  }
 
   // --- 雨 ---
   if (rainy && mode === 'game') {
