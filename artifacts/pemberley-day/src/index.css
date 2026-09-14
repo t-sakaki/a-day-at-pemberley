@@ -132,8 +132,15 @@
 .room-transition { position:absolute; inset:0; z-index:8; pointer-events:none; background:#17262c; animation: roomTransition .3s ease-in-out both; }.room-transition + .interaction-prompt { z-index:2; }
 @keyframes roomTransition { 0%,100% { opacity:0; } 50% { opacity:1; } }
 .room-reveal { position:absolute; inset:0; z-index:9; display:grid; place-items:center; padding:20px; background:rgba(9,21,24,.6); cursor:pointer; animation: roomRevealIn .4s ease-out both; }
-.room-reveal-card { position:relative; width:min(420px,100%); background:#1b2224; box-shadow:0 24px 70px rgba(0,0,0,.45); cursor:default; overflow:hidden; }
-.room-reveal-canvas { display:block; width:100%; height:260px; }
+.modal.room-reveal-card { position:relative; width:min(760px,100%); max-height:calc(100dvh - 40px); padding:0; background:#1b2224; box-shadow:0 24px 70px rgba(0,0,0,.45); cursor:default; overflow:auto; }
+.room-reveal-canvas { display:block; width:100%; height:auto; aspect-ratio:36 / 25; }
+.modal.room-reveal-card .room-reveal-text p { color:#cdc0a4; }
+.tour-room[type="button"] { width:100%; text-align:left; font:inherit; cursor:pointer; }
+.tour-room[type="button"]:hover { border-color:#c9945e; background:#33474a; }
+.tour-room[type="button"]:focus-visible { outline:2px solid #e4c58f; outline-offset:3px; }
+.task-panel-toggle { position:absolute; z-index:4; bottom:18px; left:17px; background:rgba(27,45,47,.8); }
+@media (max-width:760px) { .task-panel-toggle { bottom:154px; } }
+@media (max-width:360px) { .task-panel-toggle { bottom:134px; } }
 .room-reveal-text { padding:16px 18px 18px; color:#f2e8d2; }
 .room-reveal-text strong { display:block; font:18px var(--app-font-serif); margin-bottom:6px; }
 .room-reveal-text p { margin:0; font-size:12px; line-height:1.7; color:#cdc0a4; }

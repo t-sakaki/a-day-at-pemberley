@@ -8,6 +8,7 @@
  */
 
 import { WatercolorPalette, lerpColor, rgba } from './ColorPalette';
+import { drawBlenderRoom } from './BlenderRoom';
 import type { TourRoomId, ObservationBand } from '../systems/TourSystem';
 
 export type RoomSceneInput = {
@@ -35,6 +36,12 @@ export function drawRoom({ ctx, width: w, height: h, roomId, band, t }: RoomScen
   const warmth = warmthOf(band);
   ctx.save();
   ctx.clearRect(0, 0, w, h);
+
+  if (drawBlenderRoom({ ctx, width: w, height: h, roomId, band, t })) {
+    drawVignette(ctx, w, h, band);
+    ctx.restore();
+    return;
+  }
 
   drawWalls(ctx, w, h, warmth);
 
