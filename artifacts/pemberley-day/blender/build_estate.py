@@ -18,8 +18,10 @@ def mat(name, rgb, rough=.85):
     p.inputs['Base Color'].default_value = (*rgb, 1)
     p.inputs['Roughness'].default_value = rough
     return m
-stone=mat('Derbyshire limestone',(.66,.55,.39))
+stone=mat('Warm sandstone - Chatsworth inspired',(.66,.55,.39))
 trim=mat('Carved stone',(.85,.77,.60))
+gilt=mat('Gilded sash frames',(.62,.39,.085),.32)
+gilt.node_tree.nodes.get('Principled BSDF').inputs['Metallic'].default_value=.45
 slate=mat('Slate',(.16,.20,.20))
 glass=mat('Window glass',(.09,.19,.20),.24)
 wood=mat('Oak',(.20,.12,.065))
@@ -64,8 +66,13 @@ def window(x,y,z,side=False):
         box(name,loc,size,m)
     part('Window surround',.12,.82,1.12,0,trim)
     part('Glass',.04,.66,.96,.07,glass)
-    part('Sash upright',.04,.035,.96,.10,trim)
-    part('Sash rail',.04,.66,.04,.10,trim)
+    part('Gilt sash upright',.04,.035,.96,.10,gilt)
+    part('Gilt sash rail',.04,.66,.04,.10,gilt)
+    for edge in [-1,1]:
+        loc=(x+.11,y+edge*.33,z) if side else (x+edge*.33,y+.11,z)
+        box('Gilt sash edge',loc,(.035,.025,.96) if side else (.025,.035,.96),gilt)
+        loc=(x+.11,y,z+edge*.48) if side else (x,y+.11,z+edge*.48)
+        box('Gilt sash edge',loc,(.035,.66,.025) if side else (.66,.035,.025),gilt)
 
 blob('Meadow',(0,0,-.38),(23,22,.45),grass,4)
 box('Main walk',(0,6,.09),(2.6,14,.06),gravel)
@@ -92,11 +99,38 @@ for x in [-4,3]:
         box('Chimney cap',(x,y,6.99),(.62,.79,.13),trim)
 box('Front door',(-.5,1.51,.98),(1.05,.12,1.85),wood)
 for i in range(4): box('Step',(-.5,2.35-i*.19,.08+i*.10),(3-i*.13,1.3-i*.14,.16),trim)
-for x in [-1.55,.55]:
+for x in [-2.0,-1.0,0.0,1.0]:
     cyl('Portico column',(x,2.06,1.45),.13,2.65,trim)
     box('Capital',(x,2.06,2.79),(.42,.42,.18),trim)
-box('Entablature',(-.5,2.03,2.99),(2.75,1.3,.3),trim)
-roof(-.5,2.03,2.9,1.4,3.15,.55)
+box('Entablature',(-.5,2.03,2.99),(3.8,1.3,.3),trim)
+# Triangular classical pediment, dentils, rustication and terrace balustrades.
+ped=bpy.data.meshes.new('Carved pediment')
+ped.from_pydata([(-2.5,2.73,3.15),(1.5,2.73,3.15),(-.5,2.73,4.12),(-2.5,1.50,3.15),(1.5,1.50,3.15),(-.5,1.50,4.12)],[],[(0,1,2),(3,5,4),(0,3,4,1),(1,4,5,2),(2,5,3,0)])
+ped.materials.append(trim)
+pediment=bpy.data.objects.new('Grand entrance pediment',ped)
+bpy.context.collection.objects.link(pediment)
+blob('Pediment carved medallion',(-.5,2.77,3.48),(.28,.05,.26),stone,3)
+for x in [-5.35,4.35]:
+    for z in [.45,.95,1.45,2.0,2.5,3.,3.6,4.1,4.6]:
+        box('Rusticated corner',(x,1.51,z),(.30,.24,.33),trim)
+for i in range(32):
+    box('Cornice dentil',(-5.35+i*.31,1.60,5.08),(.11,.17,.16),trim)
+for x in [-4.4,-3.2,-2.,1.,2.2,3.4]:
+    cyl('Attic baluster',(x,1.40,5.50),.048,.42,trim)
+    blob('Baluster belly',(x,1.40,5.50),(.08,.08,.10),trim)
+for x in [-3.2,2.2]: box('Attic stone railing',(x,1.40,5.75),(3.5,.19,.14),trim)
+for x in [-5.1,4.1,-8.1,-5.9,4.9,7.1]:
+    z=5.35 if x in [-5.1,4.1] else 3.14
+    cyl('Rooftop urn plinth',(x,1.2,z+.12),.17,.24,trim)
+    blob('Rooftop stone urn',(x,1.2,z+.42),(.23,.23,.25),trim,3)
+    cyl('Urn rim',(x,1.2,z+.60),.25,.06,trim)
+for x in [-4.2,3.2]:
+    box('Formal terrace paving',(x,2.55,.11),(3.1,1.7,.12),gravel)
+    for i in range(9):
+        bx=x-1.4+i*.35
+        cyl('Terrace baluster',(bx,3.35,.48),.045,.6,trim)
+        blob('Terrace baluster',(bx,3.35,.49),(.08,.08,.12),trim)
+    box('Terrace handrail',(x,3.35,.81),(3.2,.18,.13),trim)
 
 box('Conservatory base',(-9,3.5,.25),(3.7,2,.4),stone)
 box('Conservatory glazing',(-9,3.5,1.1),(3.5,1.8,1.4),glass)
