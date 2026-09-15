@@ -26,7 +26,8 @@ test('draws Blender walkers and displays staff portraits in the real game', asyn
     };
   });
   await begin(page);
-  for (const id of ['mrs-reynolds', 'john', 'sarah', 'mr-adams', 'thomas', 'steward']) {
+  // Indoor staff are verified in their assigned rooms, not duplicated outdoors.
+  for (const id of ['mr-adams', 'thomas', 'steward']) {
     await expect.poll(() => page.evaluate(id =>
       [...(window as any).__characterDraws].some((url: any) => url.includes('/' + id + '/body-')), id)).toBe(true);
   }

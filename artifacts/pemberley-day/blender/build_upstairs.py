@@ -24,7 +24,7 @@ def build(kind):
                     box('Leather bound volume',(xx,3.65,z),(.14,.32,.57),covers[(j+row)%4],.006)
                     for dz in [-.17,.17]:
                         box('Gilt spine tooling',(xx,3.48,z+dz),(.10,.009,.022),m['gold'],0)
-        table(0,.3,2.7,1.4,m['wood']); chair(0,-.9,m['wood'],m['silk'])
+        table(0,.3,2.7,1.4,m['wood']); chair(0,-.9,m['wood'],m['silk'],math.pi)
         book(-.55,.3,.99,.65,.46,m['red'],m['paper'])
         candle(.8,.3,.92,m['gold'],m['wax'])
         rug(0,0,4.3,3.7,m['red'],m['gold'],m['paper'])
@@ -46,7 +46,7 @@ def build(kind):
         sphere('Porcelain wash bowl',(2.9,2.6,1.04),(.35,.27,.13),m['porcelain'])
         frame(2.9,4.26,2.5,1.4,1.5,m['gold'])
         box('Looking glass',(2.9,4.30,2.5),(1.15,.025,1.2),m['blue'])
-        chair(2.6,0,m['wood'],m['silk'])
+        chair(2.9,1.6,m['wood'],m['silk'],math.pi)
         rug(.6,-1.4,3,2.4,m['red'],m['gold'],m['paper'])
     sc=bpy.context.scene
     world=bpy.data.worlds.new('Upstairs daylight'); world.use_nodes=True

@@ -43,7 +43,8 @@ test('wildlife stays on the east lawn and its positions are deterministic',()=>{
   expect(wildlifeAt(12)).toEqual(wildlifeAt(12));
   expect(wildlifeAt(12)).not.toEqual(wildlifeAt(14));
   const positions=Array.from({length:1200},(_,i)=>wildlifeAt(i*.5)).flat();
-  expect(positions.every(a=>a.x>1.6&&a.x<10.2&&a.y>7.8&&a.y<10.8)).toBe(true);
+  expect(positions.filter(a=>a.kind!=='sheep').every(a=>a.x>1.6&&a.x<10.2&&a.y>7.8&&a.y<10.8)).toBe(true);
+  expect(positions.filter(a=>a.kind==='sheep').every(a=>a.x>6.7&&a.x<10&&a.y>11.7&&a.y<13)).toBe(true);
 });
 
 test('Blender wildlife is drawn in the live garden',async({page},info)=>{
@@ -57,7 +58,7 @@ test('Blender wildlife is drawn in the live garden',async({page},info)=>{
     };
   });
   await page.goto('/');await page.getByRole('button',{name:'Begin the day',exact:true}).click();
-  await expect.poll(()=>page.evaluate(()=>Array.from((window as unknown as {wildlifeDraws:Set<string>}).wildlifeDraws).length),{timeout:15_000}).toBe(6);
+  await expect.poll(()=>page.evaluate(()=>Array.from((window as unknown as {wildlifeDraws:Set<string>}).wildlifeDraws).length),{timeout:15_000}).toBe(9);
   await page.screenshot({path:info.outputPath('wildlife.png')});
 });
 
