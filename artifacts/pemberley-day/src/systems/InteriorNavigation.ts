@@ -5,7 +5,7 @@ export type Obstacle = { x: number; y: number; w: number; h: number };
 export const interiorRooms: InteriorRoomId[] = ['hall', 'gallery', 'music', 'window'];
 export const roomObstacles: Record<InteriorRoomId, Obstacle[]> = {
   library: [{x:0,y:3.8,w:9,h:1},{x:0,y:.3,w:2.7,h:1.4},{x:0,y:-.9,w:.8,h:.8}],
-  bedroom: [{x:-1.7,y:1.7,w:2.8,h:3.9},{x:2.9,y:2.6,w:1.7,h:.85},{x:2.6,y:0,w:.8,h:.8}],
+  bedroom: [{x:-1.7,y:1.7,w:2.8,h:3.9},{x:2.9,y:2.6,w:1.7,h:.85},{x:2.9,y:1.6,w:.8,h:.8}],
   hall: [
     { x: -1.55, y: .5, w: .16, h: 3.2 }, { x: 1.55, y: .5, w: .16, h: 3.2 },
     { x: -4.2, y: 1.65, w: 1.2, h: .16 }, { x: 4.2, y: 1.65, w: 1.2, h: .16 },

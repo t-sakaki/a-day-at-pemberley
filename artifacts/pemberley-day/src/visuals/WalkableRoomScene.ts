@@ -1,4 +1,5 @@
 import { drawBlenderCharacter } from './BlenderCharacter';
+import type {RoomWorker} from '../systems/StaffWorkplaces';
 import { roomElevation, roomObstacles, type InteriorRoomId, type RoomPoint } from '../systems/InteriorNavigation';
 
 type Metadata = {
@@ -44,7 +45,7 @@ export function roomProjection(id: InteriorRoomId, w: number, h: number, player:
 
 export function paintWalkableRoom(
   ctx: CanvasRenderingContext2D, layer: HTMLCanvasElement, id: InteriorRoomId,
-  player: RoomPoint, moving: boolean, face: number, now: number, band: string, w: number, h: number,
+  player: RoomPoint, moving: boolean, face: number, now: number, band: string, w: number, h: number, workers:RoomWorker[]=[],
 ) {
   const asset = roomAsset(id);
   const projection = roomProjection(id, w, h, player);
@@ -66,6 +67,10 @@ export function paintWalkableRoom(
     polygon(0,0,10,9,'#b49c72');
     roomObstacles[id].forEach(o => polygon(o.x,o.y,o.w,o.h,'#655240'));
   }
+  const actors=[...workers.map(worker=>({...worker,moving:false,face:1})),{...player,id:'steward',name:'',kind:'steward' as const,color:'#c8985c',moving,face}]
+    .sort((a,b)=>project(a,roomElevation(id,a)).y-project(b,roomElevation(id,b)).y);
+  for(const actor of actors){
+  const player=actor;
   const elevation = roomElevation(id,player);
   const foot = project(player,elevation);
   const top = project(player, elevation+1.8);
@@ -75,7 +80,7 @@ export function paintWalkableRoom(
   if (layer.width !== Math.ceil(w) || layer.height !== Math.ceil(h)) { layer.width = Math.ceil(w); layer.height = Math.ceil(h); }
   const lc = layer.getContext('2d', { willReadFrequently: true })!;
   lc.clearRect(0,0,w,h);
-  const drawn = drawBlenderCharacter(lc,foot.x,foot.y,size,{id:'steward',x:player.x,y:player.y,kind:'steward',color:'#c8985c',moving,face},now);
+  const drawn = drawBlenderCharacter(lc,foot.x,foot.y,size,{id:actor.id,x:player.x,y:player.y,kind:actor.kind,color:actor.color,moving:actor.moving,face:actor.face},now);
   if (!drawn) {
     lc.fillStyle='#d3ad63'; lc.beginPath(); lc.ellipse(foot.x,foot.y-size*.5,size*.17,size*.5,0,0,Math.PI*2); lc.fill();
   }
@@ -103,5 +108,7 @@ export function paintWalkableRoom(
     }
   }
   ctx.drawImage(layer,0,0);
+  if(actor.name){ctx.font='10px Georgia';ctx.textAlign='center';ctx.fillStyle='#fff1d3';ctx.fillText(actor.name,top.x,top.y-6);}
+  }
   return ready ? 'ready' : asset.failed ? 'fallback' : 'loading';
 }

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { doorsForRoom, isUpperRoom, moveInRoom, roomElevation, type InteriorRoomId, type RoomPoint } from '../systems/InteriorNavigation';
 import { paintWalkableRoom, roomProjection } from '../visuals/WalkableRoomScene';
+import type {RoomWorker} from '../systems/StaffWorkplaces';
 
 type Props = {
+  workers?:RoomWorker[];
   room: InteriorRoomId; name: string; names: Record<InteriorRoomId,string>; language: string; band: string;
   joystickRef: MutableRefObject<{ x: number; y: number }>;
   actionRef: MutableRefObject<(() => void) | null>;
@@ -69,7 +71,8 @@ export function WalkableInterior(props: Props) {
       const ratio=Math.min(window.devicePixelRatio||1,2);
       if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)) { canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio); }
       ctx.setTransform(ratio,0,0,ratio,0,0);
-      const currentStatus=paintWalkableRoom(ctx,layer,room,player,moving,face,now,live.current.band,w,h);
+      const currentStatus=paintWalkableRoom(ctx,layer,room,player,moving,face,now,live.current.band,w,h,live.current.workers);
+      canvas.dataset.staff=(live.current.workers??[]).map(worker=>worker.id).join(',');
       canvas.dataset.x=player.x.toFixed(3);canvas.dataset.y=player.y.toFixed(3);
       canvas.dataset.elevation=roomElevation(room,player).toFixed(3);
       canvas.dataset.asset=currentStatus;
@@ -95,6 +98,7 @@ export function WalkableInterior(props: Props) {
       <button onClick={props.onExit}>{ja?'庭へ戻る':'Return to grounds'}</button>
       {!isUpperRoom(room)&&<button onClick={props.onTend}>{room==='hall'?(ja?'部屋を見学する':'Explore the rooms'):(ja?'部屋を整える':'Set the room in order')}</button>}
       <span>{ja?'WASD / 移動パッドで歩く・扉で移動':'Walk with WASD / movement pad · walk to a door'}</span>
+      {!!props.workers?.length&&<span>{ja?'担当：':'On duty: '}{props.workers.map(worker=>worker.name).join(' · ')}</span>}
     </div>
     {doorPositions.map((p,i)=><button key={i} className="interior-door" style={{left:p.x,top:p.y}}
       disabled={doors[i].elevation>0&&!upstairs}
