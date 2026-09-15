@@ -130,8 +130,14 @@ test('grand hall renders and its staircase raises the walking character', async 
   await page.keyboard.up('w'); await page.keyboard.up('d');
   await page.screenshot({path:info.outputPath('grand-hall.png')});
   await page.keyboard.down('s'); await page.keyboard.down('a');
-  await expect.poll(async()=>Number(await canvas.getAttribute('data-elevation')),{timeout:10_000}).toBeLessThan(.1);
+  // Held movement can carry the steward through the automatic garden exit
+  // between polls. Read atomically instead of waiting on a removed canvas.
+  await expect.poll(()=>page.evaluate(()=>{
+    const room=document.querySelector<HTMLElement>('.interior-walk-canvas');
+    return room?Number(room.dataset.elevation):0;
+  }),{timeout:10_000,intervals:[50]}).toBeLessThan(.1);
   await page.keyboard.up('s'); await page.keyboard.up('a');
+  if(await canvas.count()===0) await expect(page.getByRole('button',{name:'Enter the house',exact:true})).toBeVisible();
 });
 
 test('walking into the exit leaves the room and settings suspend movement', async ({ page }) => {

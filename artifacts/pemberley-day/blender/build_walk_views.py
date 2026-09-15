@@ -17,7 +17,7 @@ def build(room):
         # A cutaway, not a transparent roof: hide suspended ceiling fixtures.
         if ob.name.startswith(('Chandelier','Crystal ','Cut crystal','Scrolled candle arm')):
             ob.hide_render=True
-        if ob.type in ['MESH','CURVE'] and ob.location.z>3.2 and abs(ob.location.x+.6)<1.5 and abs(ob.location.y-.8)<1.5:
+        if room in ['gallery','music','window'] and ob.type in ['MESH','CURVE'] and ob.location.z>3.2 and abs(ob.location.x+.6)<1.5 and abs(ob.location.y-.8)<1.5:
             ob.hide_render=True
     cam=sc.camera
     cam.location=(11,-14,13)
@@ -64,7 +64,7 @@ def build(room):
     print('WALK_VIEW_COMPLETE',room,flush=True)
 
 if __name__=='__main__':
-    rooms=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['hall','gallery','music','window']
+    rooms=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else ['hall','gallery','music','window','library','bedroom']
     for room in rooms:
-        if room not in ['hall','gallery','music','window']: raise ValueError(room)
+        if room not in ['hall','gallery','music','window','library','bedroom']: raise ValueError(room)
         build(room)

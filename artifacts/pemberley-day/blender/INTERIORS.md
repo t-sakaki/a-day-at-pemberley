@@ -74,8 +74,8 @@ locally authored landscape studies and the bust is an unnamed classical study.
   marble staircase with a crimson runner, gold handrails and a 3 m high landing.
   An original cloud-scroll panel suggests a painted hall without reproducing a
   historic mural. The stair can be climbed and descended; the landing can be
-  explored but its edges cannot be jumped off. Upper doors are decorative, not
-  additional rooms. This is not a reproduction of Chatsworth's 1912 staircase.
+  explored but its edges cannot be jumped off. Its upper doors now lead to the
+  library and guest chamber. This is not a reproduction of Chatsworth's 1912 staircase.
 
 - **Picture gallery:** green plaster, panelled dado, gilt frames, Darcy's portrait,
   landscape pictures, classical bust, mahogany console, leather book, candleholders,
@@ -122,10 +122,11 @@ Generate the hall model, then the walking views after the interiors:
 
 ```
 blender --background --factory-startup --python-exit-code 1 --python build_grand_hall.py
+blender --background --factory-startup --python-exit-code 1 --python build_upstairs.py
 blender --background --factory-startup --python-exit-code 1 --python build_walk_views.py
 ```
 
-This reads the editable interior .blend files and writes four cutaway images and
+This reads the editable interior .blend files and writes six cutaway images and
 camera/depth JSON files to public/blender/walk/. The ceiling is removed for
 visibility. A low-resolution baked depth map lets Canvas 2D put the character
 behind furniture without WebGL. Collision boxes keep the player outside furniture
@@ -135,3 +136,31 @@ depth file is unavailable, a navigable floor-plan fallback remains usable.
 The hall has no separate housekeeping task or close-up reveal; its Explore the
 rooms action leads into the picture gallery. Runtime stair elevation is matched
 to the Blender stair dimensions in InteriorNavigation.ts.
+
+## Upstairs rooms and wildlife
+
+The upper landing's left door opens the library, with three mahogany bookcases,
+225 decorative bound volumes, a writing table, books, candlestick and chair.
+The right door opens a guest chamber with a four-poster bed, silk counterpane,
+pillows, looking glass, washstand and chair. These are original fictional rooms,
+not authenticated rooms of Pemberley or a measured Chatsworth plan.
+
+Walk upstairs before using the upper-door buttons; they are disabled on the ground
+floor. Walk into an upper doorway, or use its button. The room's exit marker and
+Escape return to the corresponding landing, not the garden. The separate Return
+to grounds button remains a direct way outdoors. Furniture has collision bounds.
+These rooms are for exploration, with no additional housekeeping tasks.
+
+Generate deer and rabbit models and their three transparent poses:
+
+```
+blender --background --factory-startup --python-exit-code 1 --python build_wildlife.py
+```
+
+This saves animal-deer.blend and animal-rabbit.blend beside the generator, and
+six 256 px sprites under public/blender/animals. Two deer and two rabbits follow
+small deterministic routes on open eastern/southern lawn, outside the house,
+lake, vegetable beds and tree trunks. They share depth ordering with people.
+Missing sprites fall back to simple silhouettes. No feeding/hunting interaction
+or ecological simulation is introduced. Both rooms and animals remain Canvas 2D
+at runtime, with reusable offline Blender assets and no WebGL.

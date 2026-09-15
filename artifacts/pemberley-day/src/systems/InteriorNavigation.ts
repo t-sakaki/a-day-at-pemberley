@@ -1,8 +1,11 @@
-export type InteriorRoomId = 'hall' | 'gallery' | 'music' | 'window';
+export type InteriorRoomId = 'hall' | 'gallery' | 'music' | 'window' | 'library' | 'bedroom';
+export const isUpperRoom = (room: InteriorRoomId): room is 'library' | 'bedroom' => room === 'library' || room === 'bedroom';
 export type RoomPoint = { x: number; y: number };
 export type Obstacle = { x: number; y: number; w: number; h: number };
 export const interiorRooms: InteriorRoomId[] = ['hall', 'gallery', 'music', 'window'];
 export const roomObstacles: Record<InteriorRoomId, Obstacle[]> = {
+  library: [{x:0,y:3.8,w:9,h:1},{x:0,y:.3,w:2.7,h:1.4},{x:0,y:-.9,w:.8,h:.8}],
+  bedroom: [{x:-1.7,y:1.7,w:2.8,h:3.9},{x:2.9,y:2.6,w:1.7,h:.85},{x:2.6,y:0,w:.8,h:.8}],
   hall: [
     { x: -1.55, y: .5, w: .16, h: 3.2 }, { x: 1.55, y: .5, w: .16, h: 3.2 },
     { x: -4.2, y: 1.65, w: 1.2, h: .16 }, { x: 4.2, y: 1.65, w: 1.2, h: .16 },
@@ -51,4 +54,14 @@ export const roomDoors = [
 ];
 export function adjoiningRoom(room: InteriorRoomId, direction: number): InteriorRoomId {
   return interiorRooms[(interiorRooms.indexOf(room) + direction + interiorRooms.length) % interiorRooms.length];
+}
+export type RoomDoor = RoomPoint & { target: InteriorRoomId | null; elevation: number; arrival?: RoomPoint };
+export function doorsForRoom(room: InteriorRoomId): RoomDoor[] {
+  if (isUpperRoom(room)) return [{x:0,y:-3.75,target:'hall',elevation:0,arrival:{x:room==='library'?-3.65:3.65,y:2.8}}];
+  const doors: RoomDoor[]=roomDoors.map(d=>({...d,target:d.direction===0?null:adjoiningRoom(room,d.direction),elevation:0}));
+  if(room==='hall') doors.push(
+    {x:-3.65,y:3.7,target:'library',elevation:3},
+    {x:3.65,y:3.7,target:'bedroom',elevation:3},
+  );
+  return doors;
 }

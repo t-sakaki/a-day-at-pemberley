@@ -5,6 +5,7 @@
 
 import { drawBlenderEstate } from './BlenderEstate';
 import { drawBlenderCharacter } from './BlenderCharacter';
+import { drawWildlife, wildlifeAt } from './EstateWildlife';
 
 export type EstateFigureKind = 'lady' | 'gent' | 'steward';
 
@@ -687,11 +688,9 @@ export function drawEstate(input: EstateSceneInput): void {
     ctx.restore();
   }
 
-  // --- 人物（奥→手前でソート）---
-  [...figures]
+  // Wildlife and people share the same ground-depth order.
+  [...figures.map(fig=>({...fig,draw:()=>paintFigure(ctx,project(fig.x,fig.y,.05),figScale,fig)})),
+    ...wildlifeAt(time).map(animal=>({...animal,draw:()=>drawWildlife(input,animal)}))]
     .sort((a, b) => (a.x + a.y) - (b.x + b.y))
-    .forEach(fig => {
-      const p = project(fig.x, fig.y, 0.05);
-      paintFigure(ctx, p, figScale, fig);
-    });
+    .forEach(item=>item.draw());
 }

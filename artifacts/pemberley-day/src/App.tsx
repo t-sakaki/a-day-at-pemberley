@@ -19,7 +19,7 @@ import { type PortraitExpression, type PortraitKind } from './components/LivingP
 import { CharacterPortrait } from './components/CharacterPortrait';
 import { portraitImage } from './data/portraits';
 import { WalkableInterior } from './components/WalkableInterior';
-import type { InteriorRoomId } from './systems/InteriorNavigation';
+import { isUpperRoom, type InteriorRoomId, type RoomPoint } from './systems/InteriorNavigation';
 import { usePemberleyPro } from '@/hooks/usePemberleyPro';
 import { PemberleyProDialog } from '@/components/PemberleyProDialog';
 
@@ -746,6 +746,13 @@ function App() {
   const roomPreviewRef = useRef(false);
   const roomTriggerRef = useRef<HTMLElement | null>(null);
   const [activeRoom, setActiveRoom] = useState<InteriorRoomId | null>(null);
+  const [roomSpawn,setRoomSpawn]=useState<RoomPoint | undefined>();
+  const roomNames={
+    ...Object.fromEntries(tourRooms.map(room=>[room.id,localized(room.name,language)])),
+    hall:language==='ja'?'大階段のホール':'The grand staircase hall',
+    library:language==='ja'?'上階の図書室':'The upstairs library',
+    bedroom:language==='ja'?'上階の客用寝室':'The upstairs guest chamber',
+  } as Record<InteriorRoomId,string>;
   const activeRoomRef = useRef<InteriorRoomId | null>(null);
   const roomActionRef = useRef<(() => void) | null>(null);
   const dismissRoom = useCallback(() => {
@@ -758,12 +765,13 @@ function App() {
     if (phase !== 'game') dismissRoom();
     return () => window.clearTimeout(roomRevealTimeoutRef.current);
   }, [phase, dismissRoom]);
-  const enterRoom = useCallback((room: InteriorRoomId) => {
+  const enterRoom = useCallback((room: InteriorRoomId, spawn?: RoomPoint) => {
     dismissRoom();
     roomPreviewRef.current = true;
     keysRef.current = {};
     joystickRef.current = { x: 0, y: 0 };
     activeRoomRef.current = room;
+    setRoomSpawn(spawn);
     setActiveRoom(room);
     setLeftOpen(false); setRightOpen(false);
   }, [dismissRoom]);
@@ -1279,14 +1287,13 @@ function App() {
            <button className="outline-button" style={{ width: '100%', marginTop: 9, color: '#c8d5c8', borderColor: '#526b62' }} onClick={finishDay}><BookOpen size={14} style={{ verticalAlign: 'middle', marginRight: 7 }} /> {t('closeDay')}</button>
         </aside>
         <main className="view-wrap" onClick={() => { if (!roomReveal) setLeftOpen(false); }}>
-           <div className="view-hud"><div className="location-badge"><strong>{activeRoom === 'hall' ? (language === 'ja' ? '大階段のホール' : 'The grand staircase hall') : activeRoom ? localized(tourRooms.find(room => room.id === activeRoom)!.name, language) : t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />E &nbsp; {t('interact')}</div></div>
+           <div className="view-hud"><div className="location-badge"><strong>{activeRoom ? roomNames[activeRoom] : t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />E &nbsp; {t('interact')}</div></div>
            <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} obscured={Boolean(activeRoom)} />
            {activeRoom && <WalkableInterior key={activeRoom} room={activeRoom} language={language}
-             name={activeRoom === 'hall' ? (language === 'ja' ? '大階段のホール' : 'The grand staircase hall') : localized(tourRooms.find(room => room.id === activeRoom)!.name, language)}
-             names={{...Object.fromEntries(tourRooms.filter(room => room.id !== 'grounds').map(room => [room.id, localized(room.name, language)])),hall:language === 'ja' ? '大階段のホール' : 'The grand staircase hall'} as Record<InteriorRoomId, string>}
-             band={activeRoom === 'hall' ? 'warm' : tourReadiness[activeRoom] >= 75 ? 'warm' : tourReadiness[activeRoom] >= 45 ? 'civil' : 'wanting'}
+             name={roomNames[activeRoom]} names={roomNames} spawn={roomSpawn}
+             band={activeRoom === 'hall' || isUpperRoom(activeRoom) ? 'warm' : tourReadiness[activeRoom as 'gallery'|'music'|'window'] >= 75 ? 'warm' : tourReadiness[activeRoom as 'gallery'|'music'|'window'] >= 45 ? 'civil' : 'wanting'}
              joystickRef={joystickRef} actionRef={roomActionRef} blocked={settingsOpen || pianoOpen || diaryOpen || lettersOpen || proOpen}
-             onExit={exitRoom} onNavigate={enterRoom} onTend={() => activeRoom === 'hall' ? enterRoom('gallery') : tendRoom(activeRoom)} />}
+             onExit={exitRoom} onNavigate={enterRoom} onTend={() => { if(activeRoom==='hall') enterRoom('gallery'); else if(!isUpperRoom(activeRoom)) tendRoom(activeRoom as 'gallery'|'music'|'window'); }} />}
            {!activeRoom && <button className="house-entry-button" onClick={() => enterRoom('hall')}>{language === 'ja' ? '館に入る' : 'Enter the house'}</button>}
            {roomReveal && <RoomRevealCard observation={roomReveal} roomName={tourRooms.find(room => room.id === roomReveal.roomId)!.name} language={language} onDismiss={dismissRoom} triggerRef={roomTriggerRef} />}
            {!activeRoom && (nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{nearbyRoom.id === 'grounds' ? t('tend') : (language === 'ja' ? '入室' : 'Enter')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>)}
