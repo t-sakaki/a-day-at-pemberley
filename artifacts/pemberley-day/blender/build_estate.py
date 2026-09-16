@@ -29,6 +29,12 @@ grass=mat('Meadow',(.25,.34,.15))
 gravel=mat('Gravel',(.64,.56,.40))
 water=mat('Water',(.17,.31,.30),.19)
 leaves=[mat('Foliage '+str(i),c) for i,c in enumerate([(.18,.29,.12),(.29,.38,.16),(.36,.42,.19),(.22,.33,.20)])]
+hill_near=mat('Parkland rise',(.30,.40,.26),.9)
+hill_far=mat('Hazy far hill',(.44,.53,.47),.95)
+yew=mat('Clipped yew',(.13,.21,.12),.75)
+rose_pink=mat('Rose bloom',(.80,.40,.47),.5)
+rose_white=mat('Rose bloom pale',(.93,.90,.84),.5)
+arch_void=mat('Bridge arch shadow',(.05,.08,.10),.95)
 
 def box(name,loc,size,m):
     bpy.ops.mesh.primitive_cube_add(size=1,location=loc)
@@ -50,6 +56,12 @@ def blob(name,loc,size,m,sub=2):
     o.name,o.scale=name,size
     o.data.materials.append(m)
     for p in o.data.polygons: p.use_smooth=True
+    return o
+def cone(name,loc,r,h,m):
+    bpy.ops.mesh.primitive_cone_add(vertices=16,radius1=r,depth=h,location=(loc[0],loc[1],loc[2]+h/2))
+    o=bpy.context.object
+    o.name=name
+    o.data.materials.append(m)
     return o
 def roof(x,y,w,d,z,h):
     v=[(x-w/2,y-d/2,z),(x+w/2,y-d/2,z),(x+w/2,y+d/2,z),(x-w/2,y+d/2,z),(x-w/2+d*.38,y,z+h),(x+w/2-d*.38,y,z+h)]
@@ -78,8 +90,16 @@ blob('Meadow',(0,0,-.38),(23,22,.45),grass,4)
 box('Main walk',(0,6,.09),(2.6,14,.06),gravel)
 box('Cross walk',(0,2.4,.1),(22,1.1,.06),gravel)
 box('Promenade',(0,9,.1),(18,1,.06),gravel)
-blob('Lake bank',(-8.1,10,.04),(4.9,3.5,.14),gravel,3)
-blob('Lake',(-8.1,10,.14),(4.55,3.2,.045),water,4)
+blob('Lake bank',(-8.3,11.0,.04),(2.8,8.0,.14),gravel,3)
+blob('Lake',(-8.3,11.0,.14),(2.4,7.6,.045),water,4)
+def bridge(x,y):
+    box('Bridge undercroft shadow',(x,y,.22),(5.6,1.5,.18),arch_void)
+    box('Bridge deck',(x,y,.34),(5.8,1.6,.22),trim)
+    for s in (-1,1):
+        box('Bridge parapet',(x,y+s*.76,.62),(5.7,.14,.40),trim)
+    for px in (x-2.75,x+2.75):
+        box('Bridge abutment',(px,y,.18),(.6,1.9,.36),stone)
+bridge(-8.3,13.0)
 box('Main house',(-.5,-1,2.6),(10,4.8,5.2),stone)
 for z in [.22,1.9,3.55,5.2]: box('String course',(-.5,-1,z),(10.25,5.04,.13),trim)
 roof(-.5,-1,10.6,5.35,5.32,1.4)
@@ -153,6 +173,26 @@ for i,(x,y) in enumerate([(-13,-6),(-9,-8),(-5,-9),(0,-9),(6,-8),(11,-7),(14,-2)
         a=j*math.tau/6
         blob('Oak canopy',(x+math.cos(a)*.7,y+math.sin(a)*.7,h+random.uniform(-.2,.6)),(1.25,1.15,1.25),leaves[(i+j)%4])
 for x in [-5,3.7]: box('Terrace hedge',(x,3.4,.48),(2.8,.55,.75),leaves[0])
+for i in range(10):
+    a=i*math.tau/10
+    cone('Fountain yew',(-2.5+math.cos(a)*2.0,5.4+math.sin(a)*2.0,0),.36,1.3,yew)
+for y in (3.3,7.7,9.8,12.2):
+    for x in (-1.9,1.9):
+        cone('Walk yew',(x,y,0),.42,1.55,yew)
+for x in (-5,3.7):
+    for i,dx in enumerate((-1.15,-.55,0,.55,1.15)):
+        blob('Rose bloom',(x+dx,3.15+random.uniform(-.05,.05),.86),(.15,.15,.13),rose_pink if i%2 else rose_white,2)
+
+# Rolling parkland rising behind the house, Capability Brown style.
+for x,y,rx,ry,h,m in [(-16,-15,9,7,2.6,hill_near),(-1,-19,11,8,3.1,hill_near),(15,-14,8,6,2.3,hill_near),(-19,-6,6,7,2.0,hill_near),
+                       (-9,-23,7,4,1.3,hill_far),(8,-24,7,4,1.2,hill_far),(-22,-14,5,4,1.1,hill_far)]:
+    blob('Distant rise',(x,y,h*.5-.4),(rx,ry,h*.5+.4),m,3)
+for i,(x,y) in enumerate([(-14,-13),(-3,-17),(9,-16),(19,-11),(-20,-3)]):
+    hh=random.uniform(2.2,3.2)
+    cyl('Parkland oak trunk',(x,y,hh/2),.12,hh,wood)
+    for j in range(5):
+        a=j*math.tau/5
+        blob('Parkland oak canopy',(x+math.cos(a)*.6,y+math.sin(a)*.6,hh+random.uniform(-.15,.4)),(1.0,.9,1.0),leaves[(i+j)%4])
 
 # Match the existing Canvas 2D world projection, including its vertical scale.
 elevation=math.asin(.29/math.sqrt(.75))
