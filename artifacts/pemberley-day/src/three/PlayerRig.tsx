@@ -52,7 +52,11 @@ export function PlayerRig({ spawn, collisionMeshes, step, groundHeightAt, doors,
   const keys = useKeys();
   const group = useRef<THREE.Group>(null!);
   const local = useRef<RoomPoint>(spawn);
-  const yaw = useRef(0);
+  // Matches the yaw that holding "forward" converges to (see the movedX/
+  // movedZ → targetYaw formula below): starting anywhere else briefly makes
+  // the chase camera sit in front of the player instead of behind, so the
+  // very first key press looks reversed until movement corrects it.
+  const yaw = useRef(Math.PI);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const { camera } = useThree();
   const cameraTarget = useRef(new THREE.Vector3());
