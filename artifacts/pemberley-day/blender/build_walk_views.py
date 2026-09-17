@@ -11,14 +11,9 @@ OUT.mkdir(parents=True,exist_ok=True)
 def build(room):
     bpy.ops.wm.open_mainfile(filepath=str(ROOT/f'interior-{room}.blend'))
     sc=bpy.context.scene
-    for ob in sc.objects:
-        if ob.name.startswith(('Plaster ceiling','Ceiling ','Side moulding','Right wall','Parkland beyond','River beyond','Distant trunk','Park tree')):
-            ob.hide_render=True
-        # A cutaway, not a transparent roof: hide suspended ceiling fixtures.
-        if ob.name.startswith(('Chandelier','Crystal ','Cut crystal','Scrolled candle arm')):
-            ob.hide_render=True
-        if room in ['gallery','music','window'] and ob.type in ['MESH','CURVE'] and ob.location.z>3.2 and abs(ob.location.x+.6)<1.5 and abs(ob.location.y-.8)<1.5:
-            ob.hide_render=True
+    sys.path.insert(0,str(ROOT))
+    from interior_tools import hide_for_cutaway
+    hide_for_cutaway(room,sc)
     cam=sc.camera
     cam.location=(11,-14,13)
     cam.rotation_euler=(Vector((0,.25,1.2))-cam.location).to_track_quat('-Z','Y').to_euler()

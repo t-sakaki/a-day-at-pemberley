@@ -162,6 +162,17 @@ def rug(x,y,w,d,red,gold,cream):
             sphere('Woven rosette',(x+xx,y+yy,.062),(.17,.24,.003),gold)
             sphere('Rosette centre',(x+xx,y+yy,.066),(.08,.12,.003),red)
 
+def hide_for_cutaway(room,scene):
+    """Same cutaway rule build_walk_views.py bakes into its PNG: drop the
+    ceiling/chandelier so a camera inside the room stays unobstructed."""
+    for ob in scene.objects:
+        if ob.name.startswith(('Plaster ceiling','Ceiling ','Side moulding','Right wall','Parkland beyond','River beyond','Distant trunk','Park tree')):
+            ob.hide_render=True
+        if ob.name.startswith(('Chandelier','Crystal ','Cut crystal','Scrolled candle arm')):
+            ob.hide_render=True
+        if room in ['gallery','music','window'] and ob.type in ['MESH','CURVE'] and ob.location.z>3.2 and abs(ob.location.x+.6)<1.5 and abs(ob.location.y-.8)<1.5:
+            ob.hide_render=True
+
 def light(name,loc,target,power,size,color=(1,.88,.69)):
     data=bpy.data.lights.new(name,'AREA')
     data.energy,data.shape,data.size,data.color=power,'DISK',size,color
