@@ -20,11 +20,21 @@ type Props = {
   runSpeed?: number;
 };
 
+const MOVEMENT_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
+
 function useKeys() {
   const keys = useRef<Record<string, boolean>>({});
   useEffect(() => {
-    const down = (e: KeyboardEvent) => { keys.current[e.key.toLowerCase()] = true; };
-    const up = (e: KeyboardEvent) => { keys.current[e.key.toLowerCase()] = false; };
+    const set = (e: KeyboardEvent, value: boolean) => {
+      const code = e.key.toLowerCase();
+      // Arrow keys scroll the page by default; without preventDefault they
+      // fight the game's own movement (WASD has no such default, which is
+      // why only the arrow keys looked broken).
+      if (MOVEMENT_KEYS.includes(code)) e.preventDefault();
+      keys.current[code] = value;
+    };
+    const down = (e: KeyboardEvent) => set(e, true);
+    const up = (e: KeyboardEvent) => set(e, false);
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     return () => {
