@@ -194,6 +194,16 @@ for i,(x,y) in enumerate([(-14,-13),(-3,-17),(9,-16),(19,-11),(-20,-3)]):
         a=j*math.tau/5
         blob('Parkland oak canopy',(x+math.cos(a)*.6,y+math.sin(a)*.6,hh+random.uniform(-.15,.4)),(1.0,.9,1.0),leaves[(i+j)%4])
 
+# Real-time 3D export for the Three.js walkthrough, in the *natural* build
+# coordinates (x,y ground plane, z up) that already match the game's world
+# coordinates used for player movement. This must run before the canvas-
+# matching axis swap below, which is only for the flat offline PNG render.
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.export_scene.gltf(filepath=str(OUT/'estate.glb'), export_format='GLB',
+                           use_selection=True, export_apply=True,
+                           export_lights=False, export_cameras=False)
+print('PEMBERLEY_GLTF_EXPORT_COMPLETE', OUT/'estate.glb')
+
 # Match the existing Canvas 2D world projection, including its vertical scale.
 elevation=math.asin(.29/math.sqrt(.75))
 z_factor=.9/(math.sqrt(1.5)*math.cos(elevation))
