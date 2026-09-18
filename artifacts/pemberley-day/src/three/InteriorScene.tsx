@@ -43,7 +43,11 @@ export function InteriorScene({
     return hits.length > 0 ? hits[0].point.y : null;
   }, [meshes, raycaster]);
 
-  const step = useMemo(() => (pos: RoomPoint, dx: number, dy: number) => moveInRoom(room, pos, dx, dy), [room]);
+  // Room-local +y runs from each room's entrance door toward its far wall
+  // (e.g. the hall's stairs), the opposite sense from the grounds' world +y
+  // (away from the house). Negate dy so "forward" (W/ArrowUp) consistently
+  // means "deeper into the current area" in both the grounds and indoors.
+  const step = useMemo(() => (pos: RoomPoint, dx: number, dy: number) => moveInRoom(room, pos, dx, -dy), [room]);
 
   const doors: DoorTrigger[] = useMemo(() => doorsForRoom(room).map(door => ({
     x: door.x, y: door.y, radius: 0.65,
