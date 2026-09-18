@@ -1,8 +1,10 @@
 import { Suspense, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
+import * as THREE from 'three';
 import type { RoomPoint } from '../systems/InteriorNavigation';
 import { GroundsScene } from './GroundsScene';
 import { InteriorScene } from './InteriorScene';
+import { CinematicEffects } from './CinematicEffects';
 import type { Area } from './areas';
 
 // Phase 1+2 walkthrough prototype: the grounds (estate.glb) and the six
@@ -29,13 +31,18 @@ export default function Pemberley3DDemo() {
   }, []);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(#bcd0dd,#e9dcc2)' }}>
-      <Canvas shadows camera={{ fov: 52, near: 0.1, far: 300 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(#e3b98c,#f3dcb4)' }}>
+      <Canvas
+        shadows="soft"
+        camera={{ fov: 52, near: 0.1, far: 300 }}
+        gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
+      >
         <Suspense fallback={null}>
           {area === 'grounds'
             ? <GroundsScene key="grounds" spawn={spawn} onTransition={transition} />
             : <InteriorScene key={area} room={area} spawn={spawn} onTransition={transition} />}
         </Suspense>
+        <CinematicEffects />
       </Canvas>
       <div
         style={{
