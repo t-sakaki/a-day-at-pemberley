@@ -83,9 +83,13 @@ export function PlayerRig({ spawn, collisionMeshes, step, groundHeightAt, doors,
       if (movedX * movedX + movedZ * movedZ > 1e-8) {
         isMoving.current = true;
         const targetYaw = Math.atan2(movedX, movedZ) + Math.PI;
-        let diff = ((targetYaw - yaw.current + Math.PI) % (Math.PI * 2)) - Math.PI;
-        if (diff < -Math.PI) diff += Math.PI * 2;
-        yaw.current += diff * Math.min(1, dt * 10);
+        // Snap the camera behind the new travel direction immediately rather
+        // than easing into it: with the old gradual turn, pressing a key
+        // that reverses direction from a standstill left the camera briefly
+        // facing the old way, so the character appeared to walk *toward*
+        // the camera (reading as "moving forward on screen") instead of
+        // away from it, no matter which key was pressed.
+        yaw.current = targetYaw;
       }
     }
     g.position.x = local.current.x;
