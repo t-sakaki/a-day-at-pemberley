@@ -59,8 +59,8 @@ export function InteriorScene({
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[-4, 10, 5]} intensity={1.7} castShadow />
+      <ambientLight color="#ffe4bf" intensity={0.55} />
+      <directionalLight color="#ffdcaa" position={[-4, 10, 5]} intensity={1.9} castShadow shadow-bias={-0.0005} />
       <primitive object={scene} />
       {meshes.length > 0 && (
         <PlayerRig spawn={spawn} collisionMeshes={meshes} step={step} groundHeightAt={groundHeightAt}

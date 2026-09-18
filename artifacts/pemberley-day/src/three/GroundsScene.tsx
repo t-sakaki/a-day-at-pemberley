@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useGLTF } from '@react-three/drei';
+import { Environment, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { PlayerRig, type DoorTrigger } from './PlayerRig';
 import type { RoomPoint } from '../systems/InteriorNavigation';
@@ -66,10 +66,15 @@ export function GroundsScene({
 
   return (
     <>
-      <hemisphereLight args={['#dbe9ff', '#5b6b4a', 0.9]} />
+      {/* Golden-hour grade matching the owner's Austen Studio reference art,
+          not a neutral daylight studio setup. */}
+      <Environment preset="sunset" background blur={0.55} />
+      <fog attach="fog" args={['#e8c9a0', 30, 105]} />
+      <hemisphereLight args={['#ffd9a8', '#4f5a3d', 0.55]} />
       <directionalLight
-        position={[-14, 22, 10]} intensity={2.4} castShadow shadow-mapSize={[2048, 2048]}
+        color="#ffc98a" position={[-16, 11, 14]} intensity={2.6} castShadow shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30}
+        shadow-bias={-0.0005}
       />
       <primitive object={scene} />
       {meshes.length > 0 && (
