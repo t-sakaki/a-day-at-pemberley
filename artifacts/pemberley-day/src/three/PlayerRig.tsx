@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { RoomPoint } from '../systems/InteriorNavigation';
+import { Steward } from './Steward';
 
 export type DoorTrigger = {
   x: number; y: number; radius: number;
@@ -63,6 +64,7 @@ export function PlayerRig({ spawn, collisionMeshes, step, groundHeightAt, doors,
   const spawnedAt = useRef(performance.now());
   const fired = useRef(false);
   const firstFrame = useRef(true);
+  const isMoving = useRef(false);
 
   useFrame((_, dtRaw) => {
     const g = group.current;
@@ -72,12 +74,14 @@ export function PlayerRig({ spawn, collisionMeshes, step, groundHeightAt, doors,
     const dx = (keys.current.d || keys.current.arrowright ? 1 : 0) - (keys.current.a || keys.current.arrowleft ? 1 : 0);
     const dy = (keys.current.s || keys.current.arrowdown ? 1 : 0) - (keys.current.w || keys.current.arrowup ? 1 : 0);
     const len = Math.hypot(dx, dy);
+    isMoving.current = false;
     if (len > 0) {
       const before = local.current;
       local.current = step(before, (dx / len) * currentSpeed * dt, (dy / len) * currentSpeed * dt);
       const movedX = local.current.x - before.x;
       const movedZ = -(local.current.y - before.y);
       if (movedX * movedX + movedZ * movedZ > 1e-8) {
+        isMoving.current = true;
         const targetYaw = Math.atan2(movedX, movedZ) + Math.PI;
         let diff = ((targetYaw - yaw.current + Math.PI) % (Math.PI * 2)) - Math.PI;
         if (diff < -Math.PI) diff += Math.PI * 2;
@@ -123,18 +127,7 @@ export function PlayerRig({ spawn, collisionMeshes, step, groundHeightAt, doors,
 
   return (
     <group ref={group} position={[spawn.x, 0, -spawn.y]}>
-      <mesh position={[0, 0.85, 0]} castShadow>
-        <capsuleGeometry args={[0.3, 0.95, 4, 8]} />
-        <meshStandardMaterial color="#39493a" />
-      </mesh>
-      <mesh position={[0, 1.6, 0]} castShadow>
-        <sphereGeometry args={[0.2, 16, 16]} />
-        <meshStandardMaterial color="#e8c9a0" />
-      </mesh>
-      <mesh position={[0, 1.78, 0.02]} castShadow>
-        <coneGeometry args={[0.24, 0.2, 16]} />
-        <meshStandardMaterial color="#1c2a24" />
-      </mesh>
+      <Steward isMoving={isMoving} />
     </group>
   );
 }
