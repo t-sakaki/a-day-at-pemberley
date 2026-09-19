@@ -39,7 +39,7 @@ export default function Pemberley3DDemo() {
       >
         <Suspense fallback={null}>
           {area === 'grounds'
-            ? <GroundsScene key="grounds" spawn={spawn} onTransition={transition} visitorIds={['darcy', 'elizabeth-bennet']} />
+            ? <GroundsScene key="grounds" spawn={spawn} onTransition={transition} visitorIds={['darcy', 'elizabeth-bennet']} houndAt={{ x: 5, y: 5 }} />
             : <InteriorScene key={area} room={area} spawn={spawn} onTransition={transition} />}
         </Suspense>
         <CinematicEffects />

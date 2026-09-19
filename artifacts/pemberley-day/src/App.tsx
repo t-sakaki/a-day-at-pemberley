@@ -1318,7 +1318,7 @@ function App() {
            </button>
            {threeMode
              ? <Suspense fallback={null}>
-                 <Pemberley3DView area={activeRoom ?? 'grounds'} spawn={activeRoom ? (roomSpawn ?? { x: 0, y: -3 }) : player} onTransition={handleThreeTransition} visitorIds={estateVisitors.map(v => v.id)} />
+                 <Pemberley3DView area={activeRoom ?? 'grounds'} spawn={activeRoom ? (roomSpawn ?? { x: 0, y: -3 }) : player} onTransition={handleThreeTransition} visitorIds={estateVisitors.map(v => v.id)} houndAt={emergencies.find(e => e.type === 'dog' && e.status !== 'resolved')?.point} />
                </Suspense>
              : <>
                  <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} workplaces={workplaces} obscured={Boolean(activeRoom)} />

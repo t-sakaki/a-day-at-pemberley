@@ -13,6 +13,11 @@ const roomUrl = (room: InteriorRoomId) => `${import.meta.env.BASE_URL}blender/wa
 // landing sits around z=2.9, well above any ground-floor furniture.
 const CLIMBED_LANDING_HEIGHT = 2.5;
 
+// Overhead decoration kept for the 3D view (see build_interior_gltf.py's
+// keep_ceiling export) that must not count as "ground" for the foot-height
+// raycast in groundHeightAt below.
+const OVERHEAD_PREFIXES = ['Ceiling', 'Fresco', 'Chandelier', 'Crystal', 'Cut crystal', 'Scrolled candle arm', 'Monumental painted panel', 'Painted cloud scroll'];
+
 export function InteriorScene({
   room, spawn, onTransition,
 }: {
@@ -35,13 +40,17 @@ export function InteriorScene({
     setMeshes(found);
   }, [scene]);
 
+  const groundMeshes = useMemo(
+    () => meshes.filter(mesh => !OVERHEAD_PREFIXES.some(prefix => mesh.name.startsWith(prefix))),
+    [meshes],
+  );
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const groundHeightAt = useMemo(() => (x: number, y: number) => {
-    if (meshes.length === 0) return null;
+    if (groundMeshes.length === 0) return null;
     raycaster.set(new THREE.Vector3(x, 20, -y), new THREE.Vector3(0, -1, 0));
-    const hits = raycaster.intersectObjects(meshes, true);
+    const hits = raycaster.intersectObjects(groundMeshes, true);
     return hits.length > 0 ? hits[0].point.y : null;
-  }, [meshes, raycaster]);
+  }, [groundMeshes, raycaster]);
 
   // Room-local +y runs from each room's entrance door toward its far wall
   // (e.g. the hall's stairs), the opposite sense from the grounds' world +y

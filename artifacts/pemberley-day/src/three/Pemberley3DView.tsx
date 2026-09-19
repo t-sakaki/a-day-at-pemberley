@@ -15,12 +15,13 @@ import type { Area } from './areas';
 // positions are not yet synced from game state (see AGENTS.md) — this is
 // the walkthrough-rendering slice only.
 export function Pemberley3DView({
-  area, spawn, onTransition, visitorIds,
+  area, spawn, onTransition, visitorIds, houndAt,
 }: {
   area: Area;
   spawn: RoomPoint;
   onTransition: (area: Area, spawn: RoomPoint) => void;
   visitorIds?: string[];
+  houndAt?: RoomPoint;
 }) {
   return (
     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(#e3b98c,#f3dcb4)' }}>
@@ -31,7 +32,7 @@ export function Pemberley3DView({
       >
         <Suspense fallback={null}>
           {area === 'grounds'
-            ? <GroundsScene key="grounds" spawn={spawn} onTransition={onTransition} visitorIds={visitorIds} />
+            ? <GroundsScene key="grounds" spawn={spawn} onTransition={onTransition} visitorIds={visitorIds} houndAt={houndAt} />
             : <InteriorScene key={area} room={area} spawn={spawn} onTransition={onTransition} />}
         </Suspense>
         <CinematicEffects />
