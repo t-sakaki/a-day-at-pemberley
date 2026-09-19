@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { Bell, BookOpen, ChevronRight, CloudRain, Clock3, Menu, RotateCcw, Settings, Sparkles, Users, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { AudioManager } from './audio/AudioManager';
@@ -21,6 +21,8 @@ import { portraitImage } from './data/portraits';
 import { WalkableInterior } from './components/WalkableInterior';
 import { isUpperRoom, type InteriorRoomId, type RoomPoint } from './systems/InteriorNavigation';
 import {staffWorkplace,workerPoint,type Workplace} from './systems/StaffWorkplaces';
+import type { Area } from './three/areas';
+const Pemberley3DView = lazy(() => import('./three/Pemberley3DView').then(m => ({ default: m.Pemberley3DView })));
 import { usePemberleyPro } from '@/hooks/usePemberleyPro';
 import { PemberleyProDialog } from '@/components/PemberleyProDialog';
 
@@ -742,6 +744,7 @@ function App() {
   const [absentStaff, setAbsentStaff] = useState<string[]>([]);
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+  const [threeMode, setThreeMode] = useState(false);
   const eventSystemRef = useRef(new EventSystem());
   const guestManagerRef = useRef(new GuestManager());
   const tourSystemRef = useRef(new TourSystem());
@@ -787,6 +790,14 @@ function App() {
     keysRef.current = {}; joystickRef.current = { x: 0, y: 0 };
     playerRef.current = { x: -.5, y: 3.8 }; setPlayer(playerRef.current);
   }, []);
+  // Bridges the 3D view's door triggers into the same room state the 2D
+  // WalkableInterior drives, so switching the `threeMode` toggle mid-game
+  // keeps using the real enterRoom()/exitRoom() (schedule, ledger, staff
+  // logic untouched either way) instead of a separate 3D-only area state.
+  const handleThreeTransition = useCallback((area: Area, spawn: RoomPoint) => {
+    if (area === 'grounds') { exitRoom(); playerRef.current = spawn; setPlayer(spawn); }
+    else enterRoom(area, spawn);
+  }, [enterRoom, exitRoom]);
   useEffect(() => {
     if (phase !== 'game') { activeRoomRef.current = null; setActiveRoom(null); }
   }, [phase]);
@@ -1066,7 +1077,11 @@ function App() {
   }, [announce, minutes, phase]);
 
   useEffect(() => {
-    if (phase !== 'game') return;
+    // In 3D mode, Pemberley3DView's own PlayerRig owns movement input
+    // directly; this legacy loop (and its own window key listeners) must
+    // stay off so the two don't fight over the same keys or desync
+    // `player` against the 3D rig's independent local position ref.
+    if (phase !== 'game' || threeMode) return;
     const onKey = (event: KeyboardEvent) => {
       if (roomReveal || activeRoomRef.current || document.querySelector('[role="dialog"]')) return;
       if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable="true"]')) return;
@@ -1095,10 +1110,10 @@ function App() {
     const clearKeys = () => { keysRef.current = {}; if (!activeRoomRef.current) joystickRef.current = { x: 0, y: 0 }; };
     window.addEventListener('blur', clearKeys);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey); window.removeEventListener('blur', clearKeys); };
-  }, [phase, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length, roomReveal, enterRoom]);
+  }, [phase, threeMode, nearby, nearbyEmergency, nearbyRoom, tendRoom, addLog, notify, resolveEmergency, tts, completed, emergencies.length, roomReveal, enterRoom]);
 
   useEffect(() => {
-    if (phase !== 'game') return;
+    if (phase !== 'game' || threeMode) return;
     let raf = 0;
     let last = performance.now();
     const move = (now: number) => {
@@ -1137,7 +1152,7 @@ function App() {
     };
     raf = requestAnimationFrame(move);
     return () => { cancelAnimationFrame(raf); };
-  }, [phase, emergencies.length, roomReveal, enterRoom]);
+  }, [phase, threeMode, emergencies.length, roomReveal, enterRoom]);
 
   useEffect(() => {
     if (phase !== 'game') return;
@@ -1299,13 +1314,24 @@ function App() {
         </aside>
         <main className="view-wrap" onClick={() => { if (!roomReveal) setLeftOpen(false); }}>
            <div className="view-hud"><div className="location-badge"><strong>{activeRoom ? roomNames[activeRoom] : t('grounds')}</strong><span>{t('view')} · {languages.find(item => item.code === language)?.name}</span></div><div className="controls-badge">W A S D &nbsp; {t('move')} · Shift &nbsp; {t('run')}<br />E &nbsp; {t('interact')}</div></div>
-           <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} workplaces={workplaces} obscured={Boolean(activeRoom)} />
-           {activeRoom && <WalkableInterior key={activeRoom} room={activeRoom} language={language}
-             name={roomNames[activeRoom]} names={roomNames} spawn={roomSpawn} workers={roomWorkers}
-             band={activeRoom === 'hall' || isUpperRoom(activeRoom) ? 'warm' : tourReadiness[activeRoom as 'gallery'|'music'|'window'] >= 75 ? 'warm' : tourReadiness[activeRoom as 'gallery'|'music'|'window'] >= 45 ? 'civil' : 'wanting'}
-             joystickRef={joystickRef} actionRef={roomActionRef} blocked={settingsOpen || pianoOpen || diaryOpen || lettersOpen || proOpen}
-             onExit={exitRoom} onNavigate={enterRoom} onTend={() => { if(activeRoom==='hall') enterRoom('gallery'); else if(!isUpperRoom(activeRoom)) tendRoom(activeRoom as 'gallery'|'music'|'window'); }} />}
-           {!activeRoom && <button className="house-entry-button" onClick={() => enterRoom('hall')}>{language === 'ja' ? '館に入る' : 'Enter the house'}</button>}
+           <button className="icon-button" style={{ position: 'absolute', top: 76, right: 20, zIndex: 5 }}
+             onClick={() => setThreeMode(value => !value)}
+             aria-label={threeMode ? 'Switch to the illustrated 2D view' : 'Switch to the 3D view'}>
+             {threeMode ? '2D' : '3D'}
+           </button>
+           {threeMode
+             ? <Suspense fallback={null}>
+                 <Pemberley3DView area={activeRoom ?? 'grounds'} spawn={activeRoom ? (roomSpawn ?? { x: 0, y: -3 }) : player} onTransition={handleThreeTransition} />
+               </Suspense>
+             : <>
+                 <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} workplaces={workplaces} obscured={Boolean(activeRoom)} />
+                 {activeRoom && <WalkableInterior key={activeRoom} room={activeRoom} language={language}
+                   name={roomNames[activeRoom]} names={roomNames} spawn={roomSpawn} workers={roomWorkers}
+                   band={activeRoom === 'hall' || isUpperRoom(activeRoom) ? 'warm' : tourReadiness[activeRoom as 'gallery'|'music'|'window'] >= 75 ? 'warm' : tourReadiness[activeRoom as 'gallery'|'music'|'window'] >= 45 ? 'civil' : 'wanting'}
+                   joystickRef={joystickRef} actionRef={roomActionRef} blocked={settingsOpen || pianoOpen || diaryOpen || lettersOpen || proOpen}
+                   onExit={exitRoom} onNavigate={enterRoom} onTend={() => { if(activeRoom==='hall') enterRoom('gallery'); else if(!isUpperRoom(activeRoom)) tendRoom(activeRoom as 'gallery'|'music'|'window'); }} />}
+                 {!activeRoom && <button className="house-entry-button" onClick={() => enterRoom('hall')}>{language === 'ja' ? '館に入る' : 'Enter the house'}</button>}
+               </>}
            {roomReveal && <RoomRevealCard observation={roomReveal} roomName={tourRooms.find(room => room.id === roomReveal.roomId)!.name} language={language} onDismiss={dismissRoom} triggerRef={roomTriggerRef} />}
            {!activeRoom && (nearbyEmergency ? <div className="interaction-prompt"><kbd>E</kbd>{copy.resolve}</div> : nearbyRoom ? <div className="interaction-prompt"><kbd>E</kbd>{nearbyRoom.id === 'grounds' ? t('tend') : (language === 'ja' ? '入室' : 'Enter')} · {localized(nearbyRoom.name, language)}</div> : nearby && <div className="interaction-prompt"><kbd>E</kbd>{nearby.text}</div>)}
             <div className="touch-joystick" aria-label="Movement joystick" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (event.buttons === 0) return; const rect = event.currentTarget.getBoundingClientRect(); const dx = (event.clientX - (rect.left + rect.width / 2)) / (rect.width / 2); const dy = (event.clientY - (rect.top + rect.height / 2)) / (rect.height / 2); const length = Math.hypot(dx, dy) || 1; const scale = Math.min(1, 1 / length); joystickRef.current = { x: dx * scale, y: dy * scale }; }} onPointerUp={() => { joystickRef.current = { x: 0, y: 0 }; }} onPointerCancel={() => { joystickRef.current = { x: 0, y: 0 }; }}><span /></div>
