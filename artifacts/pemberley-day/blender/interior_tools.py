@@ -22,11 +22,16 @@ def material(name, color, rough=.65, metal=0, grain=False):
         mapping.inputs[1].default_value=(2,35,3)
         m.node_tree.links.new(coords.outputs['Generated'],mapping.inputs[0])
         m.node_tree.links.new(mapping.outputs[0],n.inputs['Vector'])
-        ramp=m.node_tree.nodes.new('ShaderNodeValToRGB')
-        ramp.color_ramp.elements[0].color=(*(c*.65 for c in color),1)
-        ramp.color_ramp.elements[1].color=(*(min(1,c*1.18) for c in color),1)
-        m.node_tree.links.new(n.outputs['Fac'],ramp.inputs[0])
-        m.node_tree.links.new(ramp.outputs[0],p.inputs['Base Color'])
+        # Deliberately NOT linked to Base Color: Blender's glTF exporter can
+        # only write pbrMetallicRoughness.baseColorFactor from an unconnected
+        # (constant) Base Color input. Linking it to this noise/ramp chain
+        # made every grained material (this crimson stair runner among them)
+        # export with no baseColorFactor at all -- glTF then defaults to
+        # white, so e.g. a red carpet silently rendered as invisible white
+        # in the real-time 3D view (still fine for the old Cycles-rendered
+        # static screenshots, which do evaluate the full node graph). Keep
+        # Base Color a flat constant and only use the noise for a bump/
+        # normal detail, which glTF doesn't need to bake to a factor.
         bump=m.node_tree.nodes.new('ShaderNodeBump')
         bump.inputs['Strength'].default_value=.12
         bump.inputs['Distance'].default_value=.015
@@ -162,11 +167,20 @@ def rug(x,y,w,d,red,gold,cream):
             sphere('Woven rosette',(x+xx,y+yy,.062),(.17,.24,.003),gold)
             sphere('Rosette centre',(x+xx,y+yy,.066),(.08,.12,.003),red)
 
-def hide_for_cutaway(room,scene):
+def hide_for_cutaway(room,scene,keep_ceiling=False):
     """Same cutaway rule build_walk_views.py bakes into its PNG: drop the
-    ceiling/chandelier so a camera inside the room stays unobstructed."""
+    ceiling/chandelier so a fixed oblique camera outside the room stays
+    unobstructed. `keep_ceiling` is for the real-time 3D walkthrough export
+    (build_interior_gltf.py): unlike that flat 2D shot, a free-roaming
+    in-room camera should actually see the painted ceiling and chandelier,
+    so only the wall/backdrop cutaway (never meant to be walked around
+    anyway) still gets dropped there."""
     for ob in scene.objects:
-        if ob.name.startswith(('Plaster ceiling','Ceiling ','Side moulding','Right wall','Parkland beyond','River beyond','Distant trunk','Park tree')):
+        if ob.name.startswith(('Side moulding','Right wall','Parkland beyond','River beyond','Distant trunk','Park tree')):
+            ob.hide_render=True
+        if keep_ceiling:
+            continue
+        if ob.name.startswith(('Plaster ceiling','Ceiling ')):
             ob.hide_render=True
         if ob.name.startswith(('Chandelier','Crystal ','Cut crystal','Scrolled candle arm')):
             ob.hide_render=True

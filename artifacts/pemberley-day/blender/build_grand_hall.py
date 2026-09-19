@@ -15,9 +15,11 @@ stone=material('Honey sandstone',(.66,.53,.34),grain=True)
 cream=material('Carved pale marble',(.79,.75,.65),.36,grain=True)
 dark=material('Black marble',(.065,.075,.065),.33)
 gold=material('Old gold leaf',(.62,.39,.10),.3,.7)
-red=material('Crimson stair runner',(.32,.035,.025),grain=True)
+red=material('Crimson stair runner',(.52,.055,.04),grain=True)
 blue=material('Mural sky',(.25,.37,.40),grain=True)
 cloud=material('Painted clouds',(.70,.65,.48))
+fresco_fig=material('Fresco figures',(.62,.28,.16),grain=True)
+fresco_deep=material('Fresco deep sky',(.14,.20,.26),grain=True)
 
 for x in range(20):
     for y in range(18):
@@ -44,6 +46,22 @@ for i in range(12):
     x=math.sin(i*2.2)*1.5
     z=4.5+(i%4)*.7
     sphere('Painted cloud scroll',(x,4.18,z),(.55,.015,.20),cloud)
+
+# Overhead fresco covering the double-height ceiling, in the spirit of the
+# Painted Hall reference (an original interpretation, not a reproduction):
+# a deep sky field with layered cloud banks and warm figure masses, seen by
+# a free-roaming 3D camera looking straight up, not just the wall panel above.
+box('Ceiling fresco field',(0,.25,8.42),(10.1,9.1,.12),fresco_deep,.01)
+for x in [-4.85,4.85]: box('Ceiling border',(x,.25,8.36),(.1,9.1,.06),gold)
+for y in [-4.2,4.7]: box('Ceiling border',(0,y,8.36),(10.1,.1,.06),gold)
+for i in range(46):
+    x=math.sin(i*1.7+.4)*4.3
+    y=math.cos(i*1.3)*3.9
+    sphere('Fresco cloud bank',(x,y,8.34),(.75,.6,.05),cloud)
+for i in range(24):
+    x=math.sin(i*2.9+1.1)*3.4
+    y=math.cos(i*2.1+.6)*3.2
+    sphere('Fresco figure mass',(x,y,8.33),(.42,.34,.045),fresco_fig)
 for x in [-3.65,3.65]:
     box('Upper dark door',(x,4.29,4.35),(1.25,.06,2.6),dark)
     frame(x,4.2,4.35,1.4,2.8,gold)
