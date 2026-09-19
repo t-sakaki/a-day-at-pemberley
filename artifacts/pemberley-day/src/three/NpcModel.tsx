@@ -8,7 +8,7 @@ import * as THREE from 'three';
 // pipeline as the player's "steward" model (see Steward.tsx for the export
 // details and the 180° facing-fix rationale — identical here since both
 // come from the same Blender rig).
-export const NPC_IDS = ['darcy', 'elizabeth-bennet'] as const;
+export const NPC_IDS = ['darcy', 'elizabeth-bennet', 'georgiana', 'bingley'] as const;
 export type NpcId = (typeof NPC_IDS)[number];
 
 const npcUrl = (id: NpcId) => `${import.meta.env.BASE_URL}blender/characters/${id}.glb`;
