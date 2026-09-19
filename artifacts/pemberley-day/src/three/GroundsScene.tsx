@@ -5,6 +5,7 @@ import { PlayerRig, type DoorTrigger } from './PlayerRig';
 import type { RoomPoint } from '../systems/InteriorNavigation';
 import { DEFAULT_ROOM_SPAWN, FRONT_DOOR_GROUNDS, FRONT_DOOR_RADIUS, type Area } from './areas';
 import { RoamingNpcs } from './RoamingNpcs';
+import { Hound } from './Hound';
 
 const ESTATE_URL = `${import.meta.env.BASE_URL}blender/estate.glb`;
 
@@ -24,11 +25,13 @@ const WALK_SURFACE_NAMES = [
 const isWalkSurface = (obj: THREE.Object3D) => WALK_SURFACE_NAMES.some(prefix => obj.name.startsWith(prefix));
 
 export function GroundsScene({
-  spawn, onTransition, visitorIds = [],
+  spawn, onTransition, visitorIds = [], houndAt,
 }: {
   spawn: RoomPoint;
   onTransition: (area: Area, spawn: RoomPoint) => void;
   visitorIds?: string[];
+  /** Set while EventSystem's 'dog' emergency is active (App.tsx's `emergencies`); its `point`. */
+  houndAt?: RoomPoint;
 }) {
   const { scene } = useGLTF(ESTATE_URL);
   const [meshes, setMeshes] = useState<THREE.Object3D[]>([]);
@@ -84,6 +87,7 @@ export function GroundsScene({
       {/* Full 3D NPCs (see NpcModel.tsx), driven by the game's actual guest
           state — see RoamingNpcs.tsx and systems/VisitorPlacement.ts. */}
       <RoamingNpcs visitorIds={visitorIds} />
+      {houndAt && <Hound x={houndAt.x} y={houndAt.y} />}
     </>
   );
 }
