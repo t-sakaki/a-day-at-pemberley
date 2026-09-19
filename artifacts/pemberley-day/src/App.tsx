@@ -21,6 +21,7 @@ import { portraitImage } from './data/portraits';
 import { WalkableInterior } from './components/WalkableInterior';
 import { isUpperRoom, type InteriorRoomId, type RoomPoint } from './systems/InteriorNavigation';
 import {staffWorkplace,workerPoint,type Workplace} from './systems/StaffWorkplaces';
+import { ROAMING_VISITORS } from './systems/VisitorPlacement';
 import type { Area } from './three/areas';
 const Pemberley3DView = lazy(() => import('./three/Pemberley3DView').then(m => ({ default: m.Pemberley3DView })));
 import { usePemberleyPro } from '@/hooks/usePemberleyPro';
@@ -353,12 +354,8 @@ const GUEST_PORTRAIT_KIND: Record<string, PortraitKind> = {
   louisa: 'lady',
 };
 // ダーシー氏の帰館以降、芝生を歩いて現れる来客（原作 ch.43 の再会場面）。
-const ROAMING_VISITORS: Record<string, { kind: 'lady' | 'gent'; home: Point }> = {
-  darcy: { kind: 'gent', home: { x: 3, y: 6 } },
-  georgiana: { kind: 'lady', home: { x: -2, y: 8 } },
-  bingley: { kind: 'gent', home: { x: 6, y: 8 } },
-  'elizabeth-bennet': { kind: 'lady', home: { x: 0, y: 9 } },
-};
+// 3D側のGroundsSceneも同じ徘徊軌道を使うため、systems/VisitorPlacement.ts
+// に共通定義を置いている。
 
 // 奉公人ごとの装い（ボンネットの淑女／燕尾服の紳士）。
 const FIGURE_KIND: Record<string, EstateFigureKind> = {
@@ -1321,7 +1318,7 @@ function App() {
            </button>
            {threeMode
              ? <Suspense fallback={null}>
-                 <Pemberley3DView area={activeRoom ?? 'grounds'} spawn={activeRoom ? (roomSpawn ?? { x: 0, y: -3 }) : player} onTransition={handleThreeTransition} />
+                 <Pemberley3DView area={activeRoom ?? 'grounds'} spawn={activeRoom ? (roomSpawn ?? { x: 0, y: -3 }) : player} onTransition={handleThreeTransition} visitorIds={estateVisitors.map(v => v.id)} />
                </Suspense>
              : <>
                  <EstateCanvas mode="game" player={player} hour={minutes / 60} language={language} figureExpressions={figureExpressions} visitors={estateVisitors} onNotice={notify} onWalk={takeWalk} staffDestinations={staffDestinations} emergencyActive={emergencies.length > 0} onStaffArrival={handleStaffArrival} workplaces={workplaces} obscured={Boolean(activeRoom)} />
