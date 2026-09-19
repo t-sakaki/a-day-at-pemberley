@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { PlayerRig, type DoorTrigger } from './PlayerRig';
 import type { RoomPoint } from '../systems/InteriorNavigation';
 import { DEFAULT_ROOM_SPAWN, FRONT_DOOR_GROUNDS, FRONT_DOOR_RADIUS, type Area } from './areas';
-import { NpcModel } from './NpcModel';
+import { RoamingNpcs } from './RoamingNpcs';
 
 const ESTATE_URL = `${import.meta.env.BASE_URL}blender/estate.glb`;
 
@@ -24,10 +24,11 @@ const WALK_SURFACE_NAMES = [
 const isWalkSurface = (obj: THREE.Object3D) => WALK_SURFACE_NAMES.some(prefix => obj.name.startsWith(prefix));
 
 export function GroundsScene({
-  spawn, onTransition,
+  spawn, onTransition, visitorIds = [],
 }: {
   spawn: RoomPoint;
   onTransition: (area: Area, spawn: RoomPoint) => void;
+  visitorIds?: string[];
 }) {
   const { scene } = useGLTF(ESTATE_URL);
   const [meshes, setMeshes] = useState<THREE.Object3D[]>([]);
@@ -80,10 +81,9 @@ export function GroundsScene({
       {meshes.length > 0 && (
         <PlayerRig spawn={spawn} collisionMeshes={meshes} step={step} groundHeightAt={groundHeightAt} doors={doors} />
       )}
-      {/* Full 3D NPCs (see NpcModel.tsx), standing near where the player
-          spawns. Not yet wired to the game's guest/staff state. */}
-      <NpcModel id="elizabeth-bennet" x={2.6} y={7.2} />
-      <NpcModel id="darcy" x={-2.6} y={10} />
+      {/* Full 3D NPCs (see NpcModel.tsx), driven by the game's actual guest
+          state — see RoamingNpcs.tsx and systems/VisitorPlacement.ts. */}
+      <RoamingNpcs visitorIds={visitorIds} />
     </>
   );
 }
