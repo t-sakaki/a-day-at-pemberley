@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { PlayerRig, type DoorTrigger } from './PlayerRig';
 import type { RoomPoint } from '../systems/InteriorNavigation';
 import { DEFAULT_ROOM_SPAWN, FRONT_DOOR_GROUNDS, FRONT_DOOR_RADIUS, type Area } from './areas';
-import { NpcBillboard } from './NpcBillboard';
+import { NpcModel } from './NpcModel';
 
 const ESTATE_URL = `${import.meta.env.BASE_URL}blender/estate.glb`;
 
@@ -80,11 +80,10 @@ export function GroundsScene({
       {meshes.length > 0 && (
         <PlayerRig spawn={spawn} collisionMeshes={meshes} step={step} groundHeightAt={groundHeightAt} doors={doors} />
       )}
-      {/* Austen Studio character-bible billboards: a first look at the owner's
-          approved art direction for NPCs, standing near where the player
+      {/* Full 3D NPCs (see NpcModel.tsx), standing near where the player
           spawns. Not yet wired to the game's guest/staff state. */}
-      <NpcBillboard id="elizabeth" x={2.6} y={7.2} />
-      <NpcBillboard id="darcy" x={-2.6} y={10} />
+      <NpcModel id="elizabeth-bennet" x={2.6} y={7.2} />
+      <NpcModel id="darcy" x={-2.6} y={10} />
     </>
   );
 }
