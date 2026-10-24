@@ -20,7 +20,7 @@ const HOUSE_BLOCK = new THREE.Box3(new THREE.Vector3(-9.2, -1, -2.2), new THREE.
 // or rooftops. Everything (including foliage) still blocks the camera.
 const WALK_SURFACE_NAMES = [
   'Meadow', 'Main walk', 'Cross walk', 'Promenade', 'Formal terrace paving',
-  'Lake bank', 'Distant rise', 'Step',
+  'Lake bank', 'Distant rise', 'Step', 'River bank', 'Village green',
 ];
 const isWalkSurface = (obj: THREE.Object3D) => WALK_SURFACE_NAMES.some(prefix => obj.name.startsWith(prefix));
 

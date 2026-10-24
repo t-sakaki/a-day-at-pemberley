@@ -31,6 +31,11 @@ water=mat('Water',(.17,.31,.30),.19)
 leaves=[mat('Foliage '+str(i),c) for i,c in enumerate([(.18,.29,.12),(.29,.38,.16),(.36,.42,.19),(.22,.33,.20)])]
 hill_near=mat('Parkland rise',(.30,.40,.26),.9)
 hill_far=mat('Hazy far hill',(.44,.53,.47),.95)
+shingle=mat('River shingle',(.58,.52,.42),.85)
+river_water=mat('River Derwent',(.22,.38,.40),.20)
+cottage_wall=mat('Lambton limewash',(.80,.75,.63),.8)
+cottage_roof=mat('Lambton thatch',(.52,.40,.20),.85)
+village_green=mat('Village green',(.28,.37,.17),.85)
 yew=mat('Clipped yew',(.13,.21,.12),.75)
 rose_pink=mat('Rose bloom',(.80,.40,.47),.5)
 rose_white=mat('Rose bloom pale',(.93,.90,.84),.5)
@@ -193,6 +198,31 @@ for i,(x,y) in enumerate([(-14,-13),(-3,-17),(9,-16),(19,-11),(-20,-3)]):
     for j in range(5):
         a=j*math.tau/5
         blob('Parkland oak canopy',(x+math.cos(a)*.6,y+math.sin(a)*.6,hh+random.uniform(-.15,.4)),(1.0,.9,1.0),leaves[(i+j)%4])
+
+# The River Derwent, winding south from the ornamental lake through the
+# parkland hills (per the owner's "Austen's World" reference map, which
+# shows the river threading the Pemberley valley down toward Lambton).
+# Built the same way as the lake: a chain of overlapping bank/water blobs
+# tracing a gently curving path, walkable along its banks like the lake's.
+river_path=[(-6.5,13,3.2,1.6),(-11,7,1.9,2.6),(-12.5,0,1.9,2.8),(-12.5,-8,1.8,3.0),(-11,-16,1.9,3.0),(-9,-22,1.9,2.6)]
+for i,(x,y,rx,ry) in enumerate(river_path):
+    blob(f'River bank {i}',(x,y,.03),(rx,ry,.12),shingle,3)
+    blob(f'River Derwent water {i}',(x,y,.10),(rx*.6,ry*.85,.04),river_water,3)
+
+# Lambton village: a handful of limewashed cottages and a small church
+# around a green, at the walkable area's southern edge past the parkland
+# hills (the reference map's "Lambton Village, 5 Miles" inset).
+blob('Village green',(-9,-24,-.05),(6.5,5.5,.3),village_green,3)
+for cx,cy in [(-11.5,-25),(-8.5,-26.5),(-6,-24.5),(-10,-22)]:
+    box('Lambton cottage wall',(cx,cy,.6),(1.8,1.5,1.2),cottage_wall)
+    roof(cx,cy,2.1,1.9,1.2,.9)
+    box('Lambton cottage door',(cx,cy-.7,.45),(.5,.06,.9),wood)
+box('Lambton church nave',(-9,-27.5,1.0),(2.4,3.6,2.0),cottage_wall)
+box('Lambton church tower',(-9,-29.1,2.4),(1.3,1.3,2.8),trim)
+cone('Lambton church spire',(-9,-29.1,3.8),.95,1.6,slate)
+for i in range(3):
+    blob('Lambton village oak',(-13+i*4.5,-23-i%2*2,1.6),(1.1,1.0,1.6),leaves[i%4],3)
+    cyl('Lambton village oak trunk',(-13+i*4.5,-23-i%2*2,.6),.12,1.2,wood)
 
 # Real-time 3D export for the Three.js walkthrough, in the *natural* build
 # coordinates (x,y ground plane, z up) that already match the game's world
